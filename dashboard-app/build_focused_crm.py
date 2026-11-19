@@ -1,0 +1,2121 @@
+# build_focused_crm.py
+# Generates index.html strictly focused on the 5 core CRM features:
+# 1. Centralized Lead Management (Web, FB, WA, Calling, CSV Import, Auto-Assign, Duplicate Detection)
+# 2. Complete Admission Pipeline (7 Stages, Student Profile & History, Doc Status Tracking)
+# 3. Counsellor Management (30 Team Members, Role Permissions, Daily Tasks & Performance)
+# 4. WhatsApp Automation (4 Flows: Enquiry Ack, Follow-up, App/Docs, Admission/Payment)
+# 5. Management Dashboard (Daily Reports, Counsellor Performance, Source Analysis, Conversion Tracking, Fee Reports)
+
+FOCUSED_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AdmitDesk · Admissions CRM | Chatwoot Extension</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              200: '#bfdbfe',
+              500: '#3b82f6',
+              600: '#1f73e8', // Chatwoot Primary Blue
+              700: '#1a68d1',
+              800: '#1e40af'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .kanban-col { min-width: 280px; width: 280px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+
+  <!-- Main Application Wrapper -->
+  <div class="max-w-[1520px] mx-auto p-3 sm:p-5 lg:p-6 space-y-4">
+
+    <!-- Top Navigation Header (Chatwoot Native Style) -->
+    <header class="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="flex items-center space-x-3.5">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-xs">
+          <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+              <span>AdmitDesk</span>
+              <span class="text-slate-400 font-normal">|</span>
+              <span class="text-blue-600 font-semibold">Admissions CRM</span>
+            </h1>
+            <span class="text-[11px] px-2 py-0.5 rounded-md font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+              Chatwoot App
+            </span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-emerald-500 animate-pulse"></span> 30 Team Members Active
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">Apex Institute of Technology & Management • Admissions Intake 2026–27</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Controls -->
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Role Switcher -->
+        <div class="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-blue-600 mr-1.5"></i>
+          <span class="text-slate-400 mr-1.5 hidden sm:inline">Role:</span>
+          <select id="roleSelector" onchange="switchRole(this.value)" class="bg-transparent font-medium text-slate-800 focus:outline-none cursor-pointer">
+            <option value="admin">Administrator (Registrar / Dean)</option>
+            <option value="lead">Team Lead · Priya Sharma</option>
+            <option value="sneha">Counsellor · Sneha Patel</option>
+            <option value="amit">Counsellor · Amit Kumar</option>
+          </select>
+        </div>
+
+        <!-- Add Lead -->
+        <button onclick="openAddModal()" class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition">
+          <i data-lucide="plus" class="w-3.5 h-3.5 mr-1"></i> + New Lead
+        </button>
+
+        <!-- Import CSV -->
+        <button onclick="openImportModal()" class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-xs transition">
+          <i data-lucide="upload" class="w-3.5 h-3.5 mr-1 text-slate-500"></i> Bulk CSV
+        </button>
+
+        <!-- Chatwoot Deep Link -->
+        <a href="https://chat.pranavcloud.in" target="_blank" class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition" title="Open Chatwoot Inbox">
+          <i data-lucide="external-link" class="w-3.5 h-3.5 mr-1"></i> Chatwoot Inbox
+        </a>
+      </div>
+    </header>
+
+    <!-- 5 Core Features Navigation Tabs -->
+    <nav class="flex items-center bg-white p-1 rounded-xl border border-slate-200/90 shadow-xs gap-1 overflow-x-auto text-xs font-semibold text-slate-600">
+      
+      <!-- Feature 5: Management Dashboard -->
+      <button onclick="setTab('dash')" id="tab-dash" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition bg-blue-50 text-blue-700 font-bold border border-blue-200/60">
+        <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+        <span>5. Management Dashboard</span>
+      </button>
+
+      <!-- Feature 1: Centralized Lead Management -->
+      <button onclick="setTab('leads')" id="tab-leads" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition hover:bg-slate-50 text-slate-600 border border-transparent">
+        <i data-lucide="inbox" class="w-4 h-4"></i>
+        <span>1. Centralized Leads</span>
+        <span class="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-full font-bold ml-0.5" id="totalLeadsCountPill">28</span>
+      </button>
+
+      <!-- Feature 2: Complete Admission Pipeline -->
+      <button onclick="setTab('pipe')" id="tab-pipe" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition hover:bg-slate-50 text-slate-600 border border-transparent">
+        <i data-lucide="git-merge" class="w-4 h-4"></i>
+        <span>2. Admission Pipeline</span>
+        <span class="bg-slate-100 text-slate-700 text-[10px] px-2 py-0.5 rounded-full font-semibold ml-0.5">7 Stages</span>
+      </button>
+
+      <!-- Feature 3: Counsellor Management -->
+      <button onclick="setTab('team')" id="tab-team" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition hover:bg-slate-50 text-slate-600 border border-transparent">
+        <i data-lucide="users" class="w-4 h-4"></i>
+        <span>3. Counsellor Management</span>
+        <span class="bg-rose-100 text-rose-700 text-[10px] px-2 py-0.5 rounded-full font-bold ml-0.5" id="teamTaskCountPill">2 Overdue</span>
+      </button>
+
+      <!-- Feature 4: WhatsApp Automation -->
+      <button onclick="setTab('wa')" id="tab-wa" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition hover:bg-slate-50 text-slate-600 border border-transparent">
+        <i data-lucide="message-circle" class="w-4 h-4 text-emerald-600"></i>
+        <span>4. WhatsApp Automation</span>
+        <span class="bg-emerald-50 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full font-semibold ml-0.5">4 Flows</span>
+      </button>
+
+    </nav>
+
+    <!-- ============================================================== -->
+    <!-- FEATURE 5: MANAGEMENT DASHBOARD                                -->
+    <!-- (Daily Reports, Counsellor Perf, Source Analysis, Conv, Fees) -->
+    <!-- ============================================================== -->
+    <div id="view-dash" class="space-y-4">
+      
+      <!-- Top 5 Executive Metric Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        
+        <!-- 1. Daily Admissions Report -->
+        <div class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-xs">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase">
+            <span>Daily Admissions</span>
+            <i data-lucide="calendar" class="w-4 h-4 text-blue-600"></i>
+          </div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <b class="text-2xl font-bold text-slate-900" id="kpiDailyAdm">3 Confirmed</b>
+            <span class="text-xs font-semibold text-emerald-600">+14 Enquiries Today</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Today: 19 Nov 2026 Intake</p>
+        </div>
+
+        <!-- 2. Active Pipeline Volume -->
+        <div class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-xs">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase">
+            <span>Active Pipeline</span>
+            <i data-lucide="layers" class="w-4 h-4 text-amber-500"></i>
+          </div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <b class="text-2xl font-bold text-slate-900" id="kpiActivePipe">21 Students</b>
+            <span class="text-xs font-semibold text-amber-600">Stages 2–6</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Counselling & Review in progress</p>
+        </div>
+
+        <!-- 3. Conversion Rate -->
+        <div class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-xs">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase">
+            <span>Overall Conversion</span>
+            <i data-lucide="trending-up" class="w-4 h-4 text-emerald-500"></i>
+          </div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <b class="text-2xl font-bold text-slate-900" id="kpiConvRate">10.7%</b>
+            <span class="text-xs font-semibold text-emerald-600">Industry Avg: 8%</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Enquiry to confirmed enrollment</p>
+        </div>
+
+        <!-- 4. Token Fees Collected -->
+        <div class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-xs">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase">
+            <span>Fee Collections</span>
+            <i data-lucide="indian-rupee" class="w-4 h-4 text-emerald-600"></i>
+          </div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <b class="text-2xl font-bold text-slate-900" id="kpiFeeCollected">₹1,11,250</b>
+            <span class="text-xs font-semibold text-emerald-600">Token Fees</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Committed Total: ₹48.6 Lakhs</p>
+        </div>
+
+        <!-- 5. Active Counsellors -->
+        <div class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-xs">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase">
+            <span>Counsellor Team</span>
+            <i data-lucide="users" class="w-4 h-4 text-indigo-500"></i>
+          </div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <b class="text-2xl font-bold text-slate-900">30 Members</b>
+            <span class="text-xs font-semibold text-blue-600">3 Clusters</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Round-robin auto load balancing</p>
+        </div>
+
+      </div>
+
+      <!-- Report 3: Lead Source Analysis & Report 4: Admission Conversion Tracking -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        
+        <!-- Admission Conversion Tracking (Funnel) - 7 cols -->
+        <div class="lg:col-span-7 bg-white rounded-xl p-5 border border-slate-200/90 shadow-xs space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">Report: Admission Conversion Funnel</h2>
+              <p class="text-xs text-slate-500">Enquiry → Counselling → Follow-up → Application → Docs → Fee → Enrollment</p>
+            </div>
+            <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded border border-blue-200">
+              Live Stage Tracking
+            </span>
+          </div>
+
+          <div id="funnelBars" class="space-y-2.5 pt-1">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Lead Source Analysis - 5 cols -->
+        <div class="lg:col-span-5 bg-white rounded-xl p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h2 class="text-sm font-bold text-slate-900">Report: Lead Source Analysis</h2>
+              <span class="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">All Channels</span>
+            </div>
+            <p class="text-xs text-slate-500 mb-3">Enquiry acquisition channels for Intake 2026</p>
+            
+            <div class="relative h-44 flex items-center justify-center">
+              <canvas id="sourceDonut"></canvas>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <span class="text-slate-700">WhatsApp (36%)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+              <span class="text-slate-700">Website Form (28%)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+              <span class="text-slate-700">Facebook / Meta (22%)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              <span class="text-slate-700">Calling & Walk-in (14%)</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Report 2: Counsellor-Wise Performance & Report 5: Fee Collection Reports -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        
+        <!-- Counsellor Performance Summary (8 cols) -->
+        <div class="lg:col-span-8 bg-white rounded-xl p-5 border border-slate-200/90 shadow-xs space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">Report: Counsellor-Wise Performance</h2>
+              <p class="text-xs text-slate-500">Lead handling, conversions, daily tasks completed, and token collections</p>
+            </div>
+            <button onclick="setTab('team')" class="text-xs text-blue-600 font-semibold hover:underline">
+              View All 30 Team Members →
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 border-b border-slate-200">
+                <tr class="text-slate-500 font-semibold uppercase text-[10px]">
+                  <th class="p-2.5">Counsellor</th>
+                  <th class="p-2.5">Role</th>
+                  <th class="p-2.5">Active Leads</th>
+                  <th class="p-2.5">Enrolled</th>
+                  <th class="p-2.5">Conversion</th>
+                  <th class="p-2.5">Token Fee</th>
+                  <th class="p-2.5 text-right">Workload</th>
+                </tr>
+              </thead>
+              <tbody id="topCounsellorsTbody" class="divide-y divide-slate-100">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Fee Collection Summary (4 cols) -->
+        <div class="lg:col-span-4 bg-white rounded-xl p-5 border border-slate-200/90 shadow-xs space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-900">Report: Fee Collections</h2>
+            <span class="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded border border-emerald-200">Verified</span>
+          </div>
+          <p class="text-xs text-slate-500">Token admission fees received towards seat reservation</p>
+
+          <div class="space-y-2 pt-1 text-xs">
+            <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 flex justify-between items-center">
+              <div>
+                <span class="text-slate-500 block text-[11px]">Token Admission Fees</span>
+                <b class="text-slate-900 text-sm">₹1,11,250</b>
+              </div>
+              <span class="text-xs font-semibold text-emerald-600">3 Seats Reserved</span>
+            </div>
+
+            <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 flex justify-between items-center">
+              <div>
+                <span class="text-slate-500 block text-[11px]">Total Course Fee Value</span>
+                <b class="text-slate-900 text-sm">₹48,60,000</b>
+              </div>
+              <span class="text-xs font-semibold text-blue-600">28 Candidates</span>
+            </div>
+
+            <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 flex justify-between items-center">
+              <div>
+                <span class="text-slate-500 block text-[11px]">Payment Methods</span>
+                <span class="text-slate-700 font-medium">UPI 55% • NEFT 35% • Card 10%</span>
+              </div>
+              <i data-lucide="credit-card" class="w-4 h-4 text-slate-400"></i>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- FEATURE 1: CENTRALIZED LEAD MANAGEMENT                          -->
+    <!-- (Website, Facebook Ads, WhatsApp, Calling, CSV, Auto-Assign, Dupe) -->
+    <!-- ============================================================== -->
+    <div id="view-leads" class="hidden space-y-4">
+      
+      <!-- Channels Overview Banner -->
+      <div class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <b class="text-slate-800 text-sm">Centralized Multi-Channel Lead Ingestion Active</b>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 text-slate-600">
+          <span class="flex items-center gap-1"><i data-lucide="globe" class="w-3.5 h-3.5 text-blue-600"></i> Website Form</span>
+          <span class="flex items-center gap-1"><i data-lucide="facebook" class="w-3.5 h-3.5 text-indigo-600"></i> Facebook / Meta Ads</span>
+          <span class="flex items-center gap-1"><i data-lucide="message-circle" class="w-3.5 h-3.5 text-emerald-600"></i> WhatsApp Business</span>
+          <span class="flex items-center gap-1"><i data-lucide="phone" class="w-3.5 h-3.5 text-amber-600"></i> Calling Inbound</span>
+          <span class="flex items-center gap-1"><i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-teal-600"></i> Bulk Excel/CSV</span>
+        </div>
+      </div>
+
+      <!-- Search & Filters Toolbar -->
+      <div class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-xs space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <span>All Centralized Leads</span>
+              <span id="leadsBadgeCount" class="text-xs font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">
+                28 Leads
+              </span>
+            </h2>
+            <p class="text-xs text-slate-500">Auto-assigned across ~30 counsellors with duplicate lead detection</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="openAddModal()" class="px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-1">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Lead
+            </button>
+            <button onclick="openImportModal()" class="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition flex items-center gap-1">
+              <i data-lucide="upload" class="w-3.5 h-3.5"></i> Import CSV
+            </button>
+            <button onclick="exportCurrentLeadsCSV()" class="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg transition flex items-center gap-1">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i> Export
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2 pt-1 border-t border-slate-100 text-xs">
+          <!-- Live Search -->
+          <div class="relative md:col-span-2">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5"></i>
+            <input type="text" id="leadSearchInput" oninput="applyFilters()" placeholder="Search student name, phone, course, city..." class="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800">
+          </div>
+
+          <!-- Channel Filter -->
+          <div>
+            <select id="filterSource" onchange="applyFilters()" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 cursor-pointer">
+              <option value="">All Channels (5)</option>
+              <option value="WhatsApp">WhatsApp Inbound</option>
+              <option value="Website">Website Form</option>
+              <option value="Facebook">Facebook Ads</option>
+              <option value="Phone Call">Phone Calling</option>
+              <option value="Walk-in">Campus Walk-in</option>
+              <option value="CSV Import">Bulk CSV Import</option>
+            </select>
+          </div>
+
+          <!-- Counsellor Filter -->
+          <div>
+            <select id="filterCounsellor" onchange="applyFilters()" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 cursor-pointer">
+              <option value="">All Counsellors</option>
+              <option value="Sneha Patel">Sneha Patel</option>
+              <option value="Amit Kumar">Amit Kumar</option>
+              <option value="Priya Sharma">Priya Sharma</option>
+            </select>
+          </div>
+
+          <!-- Reset Button -->
+          <div>
+            <button onclick="resetFilters()" class="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-semibold transition flex items-center justify-center gap-1">
+              <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset Filters
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leads Table -->
+      <div class="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50/80 border-b border-slate-200">
+              <tr class="text-slate-500 font-semibold uppercase text-[10px]">
+                <th class="p-3 w-8">#</th>
+                <th class="py-3 px-2">Student Name</th>
+                <th class="py-3 px-2">Phone & Contact</th>
+                <th class="py-3 px-2">Course</th>
+                <th class="py-3 px-2">Channel Source</th>
+                <th class="py-3 px-2">Assigned Counsellor</th>
+                <th class="py-3 px-2">Current Stage</th>
+                <th class="py-3 px-2">Follow-up</th>
+                <th class="py-3 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="leadsTableBody" class="divide-y divide-slate-100">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Bar -->
+        <div class="px-4 py-3 bg-slate-50/60 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+          <div class="flex items-center gap-2">
+            <span>Rows:</span>
+            <select id="pageSizeSelect" onchange="changePageSize(this.value)" class="bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-700">
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="all">All</option>
+            </select>
+            <span id="paginationInfo" class="ml-2 font-medium text-slate-700">Showing 1 to 10 of 28</span>
+          </div>
+
+          <div class="flex items-center gap-1">
+            <button onclick="prevPage()" id="btnPrevPage" class="px-2.5 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40">Previous</button>
+            <div id="paginationPageBtns" class="flex items-center gap-1"></div>
+            <button onclick="nextPage()" id="btnNextPage" class="px-2.5 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40">Next</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- FEATURE 2: COMPLETE ADMISSION PIPELINE                         -->
+    <!-- (Enquiry → Counselling → Follow-up → App → Docs → Fee → Enrolled) -->
+    <!-- ============================================================== -->
+    <div id="view-pipe" class="hidden space-y-4">
+      
+      <div class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold text-slate-900">Complete 7-Stage Admission Pipeline</h2>
+          <p class="text-xs text-slate-500">Enquiry → Counselling → Follow-up → Application → Document Verification → Fee Payment → Enrollment</p>
+        </div>
+
+        <!-- View Switcher -->
+        <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold">
+          <button onclick="setPipeView('kanban')" id="btn-view-kanban" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white text-slate-800 shadow-xs">
+            <i data-lucide="kanban" class="w-3.5 h-3.5 text-blue-600"></i> Kanban Pipeline
+          </button>
+          <button onclick="setPipeView('table')" id="btn-view-table" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900">
+            <i data-lucide="table" class="w-3.5 h-3.5"></i> Table List
+          </button>
+        </div>
+      </div>
+
+      <!-- Kanban 7 Columns -->
+      <div id="pipeKanbanView">
+        <div class="flex gap-3 overflow-x-auto pb-4 custom-scroll" id="kanbanBoard">
+          <!-- 7 Stage Columns dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Pipe Table View (Optional Toggle) -->
+      <div id="pipeTableView" class="hidden bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 border-b border-slate-200">
+              <tr class="text-slate-500 font-semibold uppercase text-[10px]">
+                <th class="p-3">Student</th>
+                <th class="py-3 px-2">Course</th>
+                <th class="py-3 px-2">Admission Stage</th>
+                <th class="py-3 px-2">Doc Status</th>
+                <th class="py-3 px-2">Fee Status</th>
+                <th class="py-3 px-2">Counsellor</th>
+                <th class="py-3 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="pipeTableBody" class="divide-y divide-slate-100">
+              <!-- populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- FEATURE 3: COUNSELLOR MANAGEMENT (30 TEAM MEMBERS)             -->
+    <!-- (Access for 30 Members, Role Permissions, Tasks, Follow-ups)   -->
+    <!-- ============================================================== -->
+    <div id="view-team" class="hidden space-y-4">
+      
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span>Counsellor Team Management (30 Team Members)</span>
+            <span class="text-xs bg-emerald-50 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+              Active Roster
+            </span>
+          </h2>
+          <p class="text-xs text-slate-500">Role-based permissions, daily follow-ups, and workload tracking for ~30 team members</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 border border-rose-200" id="teamOverdueLabel">
+            2 Overdue
+          </span>
+          <span class="text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 border border-amber-200" id="teamTodayLabel">
+            4 Due Today
+          </span>
+        </div>
+      </div>
+
+      <!-- Section A: Daily Tasks & Follow-up Execution Queue -->
+      <div class="bg-white rounded-xl p-4 sm:p-5 border border-slate-200/90 shadow-xs space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+              <i data-lucide="check-square" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Daily Follow-up Tasks & Reminders</h3>
+              <p class="text-xs text-slate-500">Assigned student follow-up calls scheduled for today or overdue</p>
+            </div>
+          </div>
+          <span class="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md" id="taskViewingAs">
+            Viewing: All 30 Counsellors
+          </span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50/80 border-b border-slate-200">
+              <tr class="text-slate-500 font-semibold uppercase text-[10px]">
+                <th class="p-2.5">Priority</th>
+                <th class="p-2.5">Student</th>
+                <th class="p-2.5">Phone</th>
+                <th class="p-2.5">Course</th>
+                <th class="p-2.5">Stage</th>
+                <th class="p-2.5">Assigned Counsellor</th>
+                <th class="p-2.5">Scheduled Date</th>
+                <th class="p-2.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="dailyTasksTbody" class="divide-y divide-slate-100">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Section B: 30 Team Members Roster & Workload Capacity -->
+      <div class="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden space-y-3 p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">Admissions Team Roster (30 Members)</h3>
+            <p class="text-xs text-slate-500">Live workload distribution, conversion efficiency, and token fees collected</p>
+          </div>
+          <div class="text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+            Auto-Assignment: <b>Round-Robin Balanced</b>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50/80 border-b border-slate-200">
+              <tr class="text-slate-500 font-semibold uppercase text-[10px]">
+                <th class="p-2.5">Team Member</th>
+                <th class="p-2.5">Department / Pod</th>
+                <th class="p-2.5">Role</th>
+                <th class="p-2.5">Active Leads</th>
+                <th class="p-2.5">Today Tasks</th>
+                <th class="p-2.5">Enrolled Confirmed</th>
+                <th class="p-2.5">Conversion</th>
+                <th class="p-2.5">Token Fee (₹)</th>
+                <th class="p-2.5 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody id="counsellorRosterTbody" class="divide-y divide-slate-100">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Roster Pagination -->
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-500">
+          <span id="rosterPaginationInfo">Showing 1 to 10 of 30 Counsellors</span>
+          <div class="flex items-center gap-1" id="rosterPageBtns">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- FEATURE 4: WHATSAPP AUTOMATION (THE 4 AUTOMATED FLOWS)          -->
+    <!-- (Enquiry Ack, Follow-up Reminders, App/Docs, Admission/Payment)-->
+    <!-- ============================================================== -->
+    <div id="view-wa" class="hidden space-y-4">
+      
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span>WhatsApp Admissions Automation (4 Core Flows)</span>
+            <span class="text-xs bg-emerald-50 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+              WhatsApp Cloud API Active
+            </span>
+          </h2>
+          <p class="text-xs text-slate-500">Automated triggers sent via WhatsApp on pipeline stages and scheduled callbacks</p>
+        </div>
+
+        <button onclick="testTriggerActiveFlow()" class="px-3.5 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs transition flex items-center gap-1.5">
+          <i data-lucide="send" class="w-3.5 h-3.5"></i> Test Trigger Live Message
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        
+        <!-- Left: The 4 Core Automation Rules (7 cols) -->
+        <div class="lg:col-span-7 space-y-3" id="waFlowsList">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Right: Real-Time Mobile Screen Mockup (5 cols) -->
+        <div class="lg:col-span-5 flex flex-col items-center">
+          <div class="w-full max-w-[340px] bg-slate-900 rounded-[38px] p-3 shadow-xl border-4 border-slate-800">
+            <!-- Speaker Notch -->
+            <div class="w-24 h-3.5 bg-slate-800 rounded-full mx-auto mb-2 flex items-center justify-center">
+              <span class="w-8 h-1 bg-slate-700 rounded-full"></span>
+            </div>
+
+            <!-- Screen Content -->
+            <div class="bg-[#efeae2] rounded-[28px] overflow-hidden flex flex-col h-[520px] shadow-inner text-xs">
+              
+              <!-- WhatsApp Header -->
+              <div class="bg-[#075E54] text-white p-3 flex items-center space-x-2.5">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-xs text-white">
+                  AD
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="font-bold text-xs truncate">Apex Admissions Office</div>
+                  <div class="text-[10px] text-emerald-200 flex items-center">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1"></span> Verified WhatsApp Business
+                  </div>
+                </div>
+                <i data-lucide="phone" class="w-3.5 h-3.5"></i>
+              </div>
+
+              <!-- Chat Message Bubble Area -->
+              <div class="flex-1 p-3 space-y-3 overflow-y-auto flex flex-col justify-end custom-scroll">
+                <div class="text-center">
+                  <span class="bg-white/80 text-slate-500 text-[10px] px-2 py-0.5 rounded shadow-2xs">Today</span>
+                </div>
+
+                <!-- Active Message Bubble -->
+                <div class="bg-white rounded-lg p-3 shadow-2xs border border-slate-200/60 max-w-[94%] self-start space-y-1">
+                  <div class="text-[10px] font-bold text-emerald-700 flex items-center gap-1" id="mockFlowTitle">
+                    1. Automated Enquiry Acknowledgement
+                  </div>
+                  <p class="text-slate-800 leading-relaxed text-[11px]" id="mockFlowText">
+                    Hi Rahul Sharma, thank you for your interest in MBA at Apex Institute! Your counsellor Sneha Patel will call you shortly. Reply anytime!
+                  </p>
+                  <div class="text-[9px] text-slate-400 text-right flex items-center justify-end gap-1 pt-1">
+                    <span>10:45 AM</span>
+                    <i data-lucide="check-check" class="w-3 h-3 text-blue-500"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Input bar -->
+              <div class="bg-[#f0f2f5] p-2 flex items-center space-x-1.5 border-t border-slate-200">
+                <div class="flex-1 bg-white rounded-full px-3 py-1.5 text-[11px] text-slate-400">
+                  Type a message...
+                </div>
+                <div class="w-7 h-7 rounded-full bg-[#128C7E] flex items-center justify-center text-white">
+                  <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-400 mt-2 text-center">
+            Dynamic tags: <span class="bg-blue-50 text-blue-700 font-mono px-1 rounded">{name}</span>, <span class="bg-blue-50 text-blue-700 font-mono px-1 rounded">{course}</span>, <span class="bg-blue-50 text-blue-700 font-mono px-1 rounded">{counsellor}</span>
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div> <!-- End Main Container -->
+
+  <!-- ============================================================== -->
+  <!-- SLIDE-OVER STUDENT PROFILE & ADMISSION HISTORY DRAWER          -->
+  <!-- ============================================================== -->
+  <div id="studentDrawerBackdrop" onclick="closeDrawer()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 hidden transition-opacity"></div>
+  
+  <div id="studentDrawer" class="fixed right-0 top-0 bottom-0 w-full max-w-[500px] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-200 ease-in-out flex flex-col">
+    
+    <!-- Drawer Header -->
+    <div class="p-4 border-b border-slate-200 bg-slate-50/70 flex items-start justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs" id="drawerAvatar">
+          RS
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-base font-bold text-slate-900" id="drawerName">Rahul Sharma</h3>
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full" id="drawerStagePill">Counselling</span>
+          </div>
+          <p class="text-xs text-slate-500" id="drawerSubline">MBA • Mumbai • Application #101</p>
+        </div>
+      </div>
+
+      <button onclick="closeDrawer()" class="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-200 transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <!-- Quick Actions Bar -->
+    <div class="px-4 py-2 bg-white border-b border-slate-200 flex items-center gap-2 text-xs">
+      <a id="drawerChatwootLink" href="https://chat.pranavcloud.in" target="_blank" class="flex-1 py-1.5 px-3 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg font-semibold flex items-center justify-center gap-1 transition">
+        <i data-lucide="message-square" class="w-3.5 h-3.5"></i> Chatwoot Inbox
+      </a>
+      <button onclick="drawerWhatsApp()" class="flex-1 py-1.5 px-3 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg font-semibold flex items-center justify-center gap-1 transition">
+        <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> WhatsApp
+      </button>
+      <button onclick="drawerCall()" class="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold flex items-center justify-center gap-1 transition">
+        <i data-lucide="phone" class="w-3.5 h-3.5"></i> Call
+      </button>
+    </div>
+
+    <!-- 7-Stage Pipeline Stepper -->
+    <div class="p-4 bg-slate-50 border-b border-slate-200 space-y-2">
+      <div class="flex items-center justify-between text-xs">
+        <span class="font-bold text-slate-700 flex items-center gap-1">
+          <i data-lucide="git-commit" class="w-3.5 h-3.5 text-blue-600"></i> Admission Pipeline
+        </span>
+        <button onclick="advanceCurrentStudentStage()" class="font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1" id="drawerNextStageBtn">
+          Advance Stage <i data-lucide="arrow-right" class="w-3 h-3"></i>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-7 gap-1 pt-1" id="drawerStepperBars"></div>
+      <div class="flex justify-between text-[9px] text-slate-400 px-0.5">
+        <span>Enquiry</span>
+        <span>Couns</span>
+        <span>Follow</span>
+        <span>App</span>
+        <span>Docs</span>
+        <span>Fee</span>
+        <span>Enrolled</span>
+      </div>
+    </div>
+
+    <!-- Drawer Tabs -->
+    <div class="flex border-b border-slate-200 text-xs font-semibold bg-white px-2">
+      <button onclick="setDrawerTab('info')" id="dtab-info" class="py-2.5 px-3 text-blue-600 border-b-2 border-blue-600 font-bold">
+        Student Profile
+      </button>
+      <button onclick="setDrawerTab('docs')" id="dtab-docs" class="py-2.5 px-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent">
+        Documents <span id="drawerDocsBadge" class="ml-1 text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded-full">0/4</span>
+      </button>
+      <button onclick="setDrawerTab('fees')" id="dtab-fees" class="py-2.5 px-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent">
+        Fee Payment
+      </button>
+      <button onclick="setDrawerTab('notes')" id="dtab-notes" class="py-2.5 px-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent">
+        Admission History
+      </button>
+    </div>
+
+    <!-- Drawer Content Scroll Area -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll text-xs">
+      
+      <!-- Profile Tab -->
+      <div id="dview-info" class="space-y-3">
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
+          <b class="text-xs font-bold text-slate-900 block">Personal & Channel Details</b>
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            <div><span class="text-slate-400 block">Phone</span><span class="font-semibold text-slate-800" id="infoPhone"></span></div>
+            <div><span class="text-slate-400 block">Email</span><span class="font-semibold text-slate-800 truncate block" id="infoEmail"></span></div>
+            <div><span class="text-slate-400 block">City / State</span><span class="font-semibold text-slate-800" id="infoCity"></span></div>
+            <div><span class="text-slate-400 block">Lead Source</span><span class="font-semibold text-slate-800" id="infoSource"></span></div>
+            <div><span class="text-slate-400 block">Assigned Counsellor</span><span class="font-semibold text-blue-700" id="infoCounsellor"></span></div>
+            <div><span class="text-slate-400 block">Next Follow-up</span><span class="font-semibold text-slate-800" id="infoFollowUp"></span></div>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
+          <b class="text-xs font-bold text-slate-900 block">Academic Scores & Qualification</b>
+          <div class="grid grid-cols-2 gap-2 text-[11px]" id="infoAcademicsGrid"></div>
+        </div>
+
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
+          <b class="text-xs font-bold text-slate-900 block">Parent / Guardian Contact</b>
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            <div><span class="text-slate-400 block">Father / Guardian</span><span class="font-semibold text-slate-800" id="infoFather"></span></div>
+            <div><span class="text-slate-400 block">Guardian Status</span><span class="font-semibold text-slate-800">Contact Verified</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Documents Tab -->
+      <div id="dview-docs" class="hidden space-y-3">
+        <div class="flex items-center justify-between">
+          <b class="font-bold text-slate-800">Required Document Checklist</b>
+          <span class="text-[11px] text-slate-500">Click to toggle verified status</span>
+        </div>
+        <div id="drawerDocsList" class="space-y-2"></div>
+      </div>
+
+      <!-- Fees Tab -->
+      <div id="dview-fees" class="hidden space-y-3">
+        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800">Fee Status & Token Ledger</span>
+            <span id="drawerFeeBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+              Token Due
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="p-2.5 bg-white rounded-lg border border-slate-200">
+              <span class="text-[10px] text-slate-400 block">Total Course Fee</span>
+              <b class="text-sm text-slate-900" id="drawerTotalFee">₹1,85,000</b>
+            </div>
+            <div class="p-2.5 bg-white rounded-lg border border-slate-200">
+              <span class="text-[10px] text-slate-400 block">Token Admission Fee</span>
+              <b class="text-sm text-blue-700" id="drawerAdmFee">₹46,250</b>
+            </div>
+            <div class="p-2.5 bg-white rounded-lg border border-slate-200">
+              <span class="text-[10px] text-slate-400 block">Amount Paid</span>
+              <b class="text-sm text-emerald-600" id="drawerAmountPaid">₹0</b>
+            </div>
+            <div class="p-2.5 bg-white rounded-lg border border-slate-200">
+              <span class="text-[10px] text-slate-400 block">Pending Balance</span>
+              <b class="text-sm text-rose-600" id="drawerBalance">₹46,250</b>
+            </div>
+          </div>
+
+          <button onclick="openRecordPaymentModal()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold flex items-center justify-center gap-1.5 transition">
+            <i data-lucide="receipt" class="w-4 h-4"></i> Record Token Fee Payment
+          </button>
+        </div>
+
+        <div id="drawerPaymentHistory" class="space-y-1.5"></div>
+      </div>
+
+      <!-- History & Notes Tab -->
+      <div id="dview-notes" class="hidden space-y-3">
+        <div class="space-y-1.5">
+          <label class="font-bold text-slate-700 block">Add Counsellor Call Note</label>
+          <div class="flex gap-2">
+            <input type="text" id="drawerNoteInput" placeholder="Enter follow-up call notes..." class="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+            <button onclick="addCurrentStudentNote()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shrink-0">Save</button>
+          </div>
+        </div>
+
+        <div>
+          <b class="font-bold text-slate-800 block mb-2">Admission History Timeline</b>
+          <div id="drawerNotesList" class="space-y-2"></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div> <!-- End Drawer -->
+
+  <!-- ============================================================== -->
+  <!-- MODAL: ADD NEW STUDENT LEAD (WITH LIVE DUPLICATE DETECTION)     -->
+  <!-- ============================================================== -->
+  <div id="modalAddLead" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 text-xs">
+      
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">Add New Student Lead</h3>
+            <p class="text-xs text-slate-500">Auto-assigned with real-time duplicate check</p>
+          </div>
+        </div>
+        <button onclick="closeAddModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <!-- Live Duplicate Detection Banner -->
+      <div id="addLeadDupeAlert" class="hidden p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 flex items-start gap-2">
+        <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
+        <div>
+          <b class="font-semibold block">Duplicate Lead Detected!</b>
+          <span id="addLeadDupeText">This number is already assigned.</span>
+        </div>
+      </div>
+
+      <form onsubmit="submitNewLead(event)" class="space-y-3">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Student Full Name *</label>
+          <input type="text" id="newLeadName" required placeholder="e.g. Ananya Roy" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Mobile Phone *</label>
+            <input type="tel" id="newLeadPhone" required oninput="checkDuplicatePhone(this.value)" placeholder="9820123456" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Email Address</label>
+            <input type="email" id="newLeadEmail" placeholder="student@gmail.com" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Target Course *</label>
+            <select id="newLeadCourse" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer">
+              <option value="MBA">MBA (2 Years)</option>
+              <option value="B.Tech CSE">B.Tech CSE (4 Years)</option>
+              <option value="BBA">BBA (3 Years)</option>
+              <option value="MCA">MCA (2 Years)</option>
+              <option value="BCA">BCA (3 Years)</option>
+              <option value="B.Sc Nursing">B.Sc Nursing (4 Years)</option>
+              <option value="Data Science">Data Science (2 Years)</option>
+              <option value="B.Des">B.Des (4 Years)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Lead Channel *</label>
+            <select id="newLeadSource" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer">
+              <option value="WhatsApp">WhatsApp Inbound</option>
+              <option value="Website">Website Form</option>
+              <option value="Facebook">Facebook Ads</option>
+              <option value="Phone Call">Phone Inbound</option>
+              <option value="Walk-in">Campus Walk-in</option>
+              <option value="CSV Import">Bulk CSV Import</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">City / State</label>
+            <input type="text" id="newLeadCity" placeholder="e.g. Pune" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Counsellor Assignment</label>
+            <select id="newLeadCounsellor" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer">
+              <option value="auto">Auto-Assign (Round Robin)</option>
+              <option value="Sneha Patel">Sneha Patel</option>
+              <option value="Amit Kumar">Amit Kumar</option>
+              <option value="Priya Sharma">Priya Sharma</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeAddModal()" class="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-semibold">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-xs">Save & Auto-Assign</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: BULK CSV IMPORT (WITH AUTO DUPLICATE SKIPPING)           -->
+  <!-- ============================================================== -->
+  <div id="modalImport" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 text-xs">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">Bulk CSV Lead Import</h3>
+            <p class="text-xs text-slate-500">Auto-detects & skips duplicate phone numbers</p>
+          </div>
+        </div>
+        <button onclick="closeImportModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="space-y-1.5">
+        <div class="flex justify-between items-center">
+          <label class="font-semibold text-slate-700">Paste CSV Rows (Name, Phone, Course, City)</label>
+          <button onclick="loadSampleCSV()" class="text-blue-600 font-semibold hover:underline">Load Sample</button>
+        </div>
+        <textarea id="importCSVText" rows="5" class="w-full font-mono text-[11px] p-2.5 bg-slate-50 border border-slate-200 rounded-lg"></textarea>
+      </div>
+
+      <div class="p-3 bg-blue-50/60 rounded-lg border border-blue-100 text-[11px] text-slate-600 space-y-1">
+        <b class="text-blue-900 block">Bulk Automation Rules:</b>
+        <p>• Duplicate phone numbers will be skipped automatically.</p>
+        <p>• Valid leads will be evenly round-robin assigned across the 30 counsellors.</p>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="closeImportModal()" class="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-semibold">Cancel</button>
+        <button onclick="executeCSVImport()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-xs">Process Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: RECORD TOKEN PAYMENT                                    -->
+  <!-- ============================================================== -->
+  <div id="modalPayment" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 text-xs">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+            <i data-lucide="receipt" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">Record Fee Payment</h3>
+            <p class="text-xs text-slate-500" id="paymentModalStudentName">Student Name</p>
+          </div>
+        </div>
+        <button onclick="closePaymentModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form onsubmit="submitPayment(event)" class="space-y-3">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Amount (₹ INR) *</label>
+          <input type="number" id="payAmount" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-900">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Payment Mode *</label>
+            <select id="payMode" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer">
+              <option value="UPI">UPI (GPay / PhonePe)</option>
+              <option value="NEFT">Net Banking (NEFT/RTGS)</option>
+              <option value="Card">Debit / Credit Card</option>
+              <option value="Cash">Cash / Counter DD</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">UTR / Ref Number</label>
+            <input type="text" id="payRef" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-mono">
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closePaymentModal()" class="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-semibold">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-xs">Issue Receipt & Confirm</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 text-xs font-semibold transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toastMsg">Action completed</span>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC (STRICTLY WIRED TO THE 5 FEATURES) -->
+  <script>
+    // 1. DATA MODELS
+    const STAGES = ['Enquiry', 'Counselling', 'Follow-up', 'Application', 'Doc Verification', 'Fee Payment', 'Enrollment'];
+    
+    const STAGE_PILLS = {
+      'Enquiry': 'bg-slate-100 text-slate-700 border-slate-200',
+      'Counselling': 'bg-blue-50 text-blue-700 border-blue-200',
+      'Follow-up': 'bg-amber-50 text-amber-700 border-amber-200',
+      'Application': 'bg-purple-50 text-purple-700 border-purple-200',
+      'Doc Verification': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      'Fee Payment': 'bg-rose-50 text-rose-700 border-rose-200',
+      'Enrollment': 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    };
+
+    const DOC_NAMES = ['10th Marksheet', '12th / Grad Marksheet', 'Govt ID (Aadhaar)', 'Transfer Certificate'];
+
+    // 4 WhatsApp Flows explicitly matching CRM feature #4
+    const WA_FLOWS = [
+      {
+        id: 'flow1',
+        title: '1. Automated Enquiry Acknowledgement',
+        trigger: 'Triggered instantly when an enquiry arrives from Website, Facebook Ads, or WhatsApp',
+        active: true,
+        template: 'Hi {name}, thank you for your enquiry for {course} at Apex Institute! Your assigned counsellor {counsellor} will reach out shortly. Reply here anytime for instant assistance.'
+      },
+      {
+        id: 'flow2',
+        title: '2. Follow-up Call Reminder',
+        trigger: 'Triggered 2 hours before a scheduled counsellor consultation call',
+        active: true,
+        template: 'Hi {name}, this is a reminder regarding your scheduled {course} admission consultation with counsellor {counsellor} today. Does this time still work for you?'
+      },
+      {
+        id: 'flow3',
+        title: '3. Application & Document Status Notification',
+        trigger: 'Triggered when application form is initiated or when documents are verified/pending',
+        active: true,
+        template: 'Hi {name}, your {course} admission application has been reviewed! Please upload any pending marksheets or check your status here: https://apex.edu/status?id={id}'
+      },
+      {
+        id: 'flow4',
+        title: '4. Admission & Payment Reminder',
+        trigger: 'Triggered when documents are verified and token fee is pending, or on confirmed seat enrollment',
+        active: true,
+        template: '🎉 Congratulations {name}! Your admission for {course} at Apex Institute is approved. Complete your token fee payment to confirm your seat reservation.'
+      }
+    ];
+
+    // 30 Team Members roster matching CRM feature #3
+    const TEAM_MEMBERS = [
+      { id: 1, name: 'Priya Sharma', role: 'Team Lead', pod: 'Admissions Central', active: 8, today: 1, enrolled: 2, conv: '25%', fee: 80000, status: 'Optimal' },
+      { id: 2, name: 'Sneha Patel', role: 'Senior Counsellor', pod: 'Management (MBA/BBA)', active: 10, today: 2, enrolled: 1, conv: '24%', fee: 46250, status: 'Optimal' },
+      { id: 3, name: 'Amit Kumar', role: 'Counsellor', pod: 'Engineering (B.Tech)', active: 10, today: 1, enrolled: 0, conv: '18%', fee: 0, status: 'Heavy' },
+      { id: 4, name: 'Rajesh Verma', role: 'Senior Counsellor', pod: 'Computer Apps (MCA/BCA)', active: 9, today: 2, enrolled: 1, conv: '22%', fee: 40000, status: 'Optimal' },
+      { id: 5, name: 'Anjali Rao', role: 'Counsellor', pod: 'Design & Architecture', active: 7, today: 1, enrolled: 1, conv: '20%', fee: 35000, status: 'Available' },
+      { id: 6, name: 'Vikram Malhotra', role: 'Senior Counsellor', pod: 'Healthcare & Nursing', active: 8, today: 0, enrolled: 1, conv: '21%', fee: 30000, status: 'Available' },
+      { id: 7, name: 'Pooja Nair', role: 'Counsellor', pod: 'Management (MBA/BBA)', active: 6, today: 1, enrolled: 0, conv: '15%', fee: 0, status: 'Available' },
+      { id: 8, name: 'Rohan Joshi', role: 'Counsellor', pod: 'Engineering (B.Tech)', active: 8, today: 2, enrolled: 1, conv: '19%', fee: 55000, status: 'Optimal' },
+      { id: 9, name: 'Neha Gupta', role: 'Counsellor', pod: 'Undergraduate BBA/BCA', active: 7, today: 1, enrolled: 0, conv: '17%', fee: 0, status: 'Available' },
+      { id: 10, name: 'Deepak Sharma', role: 'Counsellor', pod: 'Postgraduate MBA/MCA', active: 9, today: 2, enrolled: 1, conv: '23%', fee: 46250, status: 'Optimal' },
+      { id: 11, name: 'Kavita Sen', role: 'Counsellor', pod: 'Healthcare & Nursing', active: 5, today: 1, enrolled: 0, conv: '14%', fee: 0, status: 'Available' },
+      { id: 12, name: 'Manish Patel', role: 'Counsellor', pod: 'Engineering (B.Tech)', active: 7, today: 0, enrolled: 0, conv: '16%', fee: 0, status: 'Available' },
+      { id: 13, name: 'Swati Deshmukh', role: 'Counsellor', pod: 'Computer Apps (MCA/BCA)', active: 6, today: 1, enrolled: 0, conv: '18%', fee: 0, status: 'Available' },
+      { id: 14, name: 'Suresh Reddy', role: 'Counsellor', pod: 'Management (MBA/BBA)', active: 8, today: 1, enrolled: 1, conv: '20%', fee: 46250, status: 'Optimal' },
+      { id: 15, name: 'Meera Iyer', role: 'Counsellor', pod: 'Design & B.Des', active: 5, today: 0, enrolled: 0, conv: '15%', fee: 0, status: 'Available' },
+      { id: 16, name: 'Arvind Swamy', role: 'Counsellor', pod: 'Engineering (B.Tech)', active: 6, today: 1, enrolled: 0, conv: '17%', fee: 0, status: 'Available' },
+      { id: 17, name: 'Bhavna Kulkarni', role: 'Counsellor', pod: 'Undergraduate BCA', active: 7, today: 2, enrolled: 0, conv: '16%', fee: 0, status: 'Available' },
+      { id: 18, name: 'Chirag Sethi', role: 'Counsellor', pod: 'Management (MBA)', active: 8, today: 1, enrolled: 1, conv: '22%', fee: 46250, status: 'Optimal' },
+      { id: 19, name: 'Divya Nambiar', role: 'Counsellor', pod: 'Healthcare & Nursing', active: 6, today: 0, enrolled: 0, conv: '18%', fee: 0, status: 'Available' },
+      { id: 20, name: 'Eshwar Prasad', role: 'Counsellor', pod: 'Engineering (B.Tech)', active: 7, today: 1, enrolled: 0, conv: '19%', fee: 0, status: 'Available' },
+      { id: 21, name: 'Farhan Akhtar', role: 'Counsellor', pod: 'Computer Apps (MCA)', active: 5, today: 1, enrolled: 0, conv: '14%', fee: 0, status: 'Available' },
+      { id: 22, name: 'Geeta Mehta', role: 'Counsellor', pod: 'Undergraduate BBA', active: 6, today: 0, enrolled: 0, conv: '17%', fee: 0, status: 'Available' },
+      { id: 23, name: 'Himanshu Roy', role: 'Counsellor', pod: 'Management (MBA)', active: 7, today: 1, enrolled: 0, conv: '20%', fee: 0, status: 'Available' },
+      { id: 24, name: 'Ishita Kapoor', role: 'Counsellor', pod: 'Design & B.Des', active: 5, today: 1, enrolled: 0, conv: '16%', fee: 0, status: 'Available' },
+      { id: 25, name: 'Jatin Chawla', role: 'Counsellor', pod: 'Engineering (B.Tech)', active: 6, today: 0, enrolled: 0, conv: '18%', fee: 0, status: 'Available' },
+      { id: 26, name: 'Komal Aggarwal', role: 'Counsellor', pod: 'Management (BBA)', active: 7, today: 1, enrolled: 0, conv: '19%', fee: 0, status: 'Available' },
+      { id: 27, name: 'Lokesh Yadav', role: 'Counsellor', pod: 'Computer Apps (BCA)', active: 6, today: 0, enrolled: 0, conv: '15%', fee: 0, status: 'Available' },
+      { id: 28, name: 'Madhavan S.', role: 'Counsellor', pod: 'Engineering (B.Tech)', active: 8, today: 2, enrolled: 1, conv: '21%', fee: 55000, status: 'Optimal' },
+      { id: 29, name: 'Nandini Das', role: 'Counsellor', pod: 'Healthcare & Nursing', active: 5, today: 0, enrolled: 0, conv: '17%', fee: 0, status: 'Available' },
+      { id: 30, name: 'Omkar Gupte', role: 'Counsellor', pod: 'Admissions Central', active: 7, today: 1, enrolled: 0, conv: '18%', fee: 0, status: 'Available' }
+    ];
+
+    // 28 Leads covering all 5 ingestion channels & 7 stages
+    let leads = [
+      { id: 101, name: 'Rahul Sharma', phone: '+91 98201 23456', email: 'rahul.sharma@gmail.com', course: 'MBA', source: 'WhatsApp', stage: 'Counselling', counsellor: 'Sneha Patel', counsellorId: 'sneha', totalFee: 185000, admFee: 46250, paid: 0, city: 'Mumbai', followUp: '19 Nov 2026', isOverdue: false, docs: [true, false, false, false], father: 'Mr. Ashok Sharma', academics: { t10: '85%', t12: '82%', grad: 'B.Com 78%', test: 'CAT 84 %ile' }, notes: ['Student completed B.Com. Interested in Marketing & Finance electives.'] },
+      { id: 102, name: 'Ananya Verma', phone: '+91 98765 43210', email: 'ananya.verma@gmail.com', course: 'B.Tech CSE', source: 'Website', stage: 'Fee Payment', counsellor: 'Sneha Patel', counsellorId: 'sneha', totalFee: 220000, admFee: 55000, paid: 0, city: 'Pune', followUp: 'Today', isOverdue: false, docs: [true, true, true, true], father: 'Dr. Suresh Verma', academics: { t10: '92%', t12: '89%', grad: 'N/A', test: 'JEE 91 %ile' }, notes: ['All Class 12 and entrance scores verified. Token fee payment link sent.'] },
+      { id: 103, name: 'Rohit Gupta', phone: '+91 98112 23344', email: 'rohit.gupta@outlook.com', course: 'BBA', source: 'Facebook', stage: 'Enquiry', counsellor: 'Amit Kumar', counsellorId: 'amit', totalFee: 140000, admFee: 35000, paid: 0, city: 'Delhi NCR', followUp: 'Today', isOverdue: false, docs: [false, false, false, false], father: 'Mr. Rajesh Gupta', academics: { t10: '76%', t12: '74%', grad: 'N/A', test: 'CUET 78%' }, notes: ['Saw FB ad. Asked about last date of submission and hostel options.'] },
+      { id: 104, name: 'Tanya Reddy', phone: '+91 99887 76655', email: 'tanya.reddy@yahoo.com', course: 'MCA', source: 'WhatsApp', stage: 'Application', counsellor: 'Amit Kumar', counsellorId: 'amit', totalFee: 160000, admFee: 40000, paid: 0, city: 'Hyderabad', followUp: '22 Nov 2026', isOverdue: false, docs: [true, true, false, false], father: 'Mr. V. Reddy', academics: { t10: '81%', t12: '80%', grad: 'BCA 8.2 CGPA', test: 'N/A' }, notes: ['Online application form submitted. Application ID: MCA-2026-089.'] },
+      { id: 105, name: 'Vikram Singh Rathore', phone: '+91 97123 45678', email: 'vikram.singh@gmail.com', course: 'B.Sc Nursing', source: 'Walk-in', stage: 'Enrollment', counsellor: 'Priya Sharma', counsellorId: 'lead', totalFee: 120000, admFee: 30000, paid: 30000, city: 'Jaipur', followUp: 'Completed', isOverdue: false, docs: [true, true, true, true], father: 'Mr. Bhanwar Singh', academics: { t10: '78%', t12: '75%', grad: 'N/A', test: 'State Entrance' }, notes: ['Token fee paid via NEFT UTR98234710. Seat officially confirmed!'] },
+      { id: 106, name: 'Divya Joshi', phone: '+91 94250 12345', email: 'divya.joshi@gmail.com', course: 'MBA', source: 'Phone Call', stage: 'Follow-up', counsellor: 'Sneha Patel', counsellorId: 'sneha', totalFee: 185000, admFee: 46250, paid: 0, city: 'Indore', followUp: '17 Nov 2026', isOverdue: true, docs: [true, false, false, false], father: 'Mr. M.K. Joshi', academics: { t10: '88%', t12: '85%', grad: 'B.Com 79%', test: 'MAT 88 %ile' }, notes: ['OVERDUE: Father wanted to discuss education loan assistance options.'] },
+      { id: 107, name: 'Arjun Nair', phone: '+91 98450 99887', email: 'arjun.nair@gmail.com', course: 'B.Tech CSE', source: 'Facebook', stage: 'Counselling', counsellor: 'Amit Kumar', counsellorId: 'amit', totalFee: 220000, admFee: 55000, paid: 0, city: 'Bangalore', followUp: '20 Nov 2026', isOverdue: false, docs: [true, false, false, false], father: 'Mr. K. Nair', academics: { t10: '94%', t12: '91%', grad: 'N/A', test: 'JEE 94 %ile' }, notes: ['Looking for Artificial Intelligence specialization in CSE.'] },
+      { id: 108, name: 'Megha Sundaram', phone: '+91 94440 11223', email: 'megha.sundaram@gmail.com', course: 'Data Science', source: 'Website', stage: 'Doc Verification', counsellor: 'Sneha Patel', counsellorId: 'sneha', totalFee: 190000, admFee: 47500, paid: 0, city: 'Chennai', followUp: '21 Nov 2026', isOverdue: false, docs: [true, true, true, false], father: 'Mr. Sundaram R.', academics: { t10: '89%', t12: '87%', grad: 'B.Sc Maths 82%', test: 'N/A' }, notes: ['Aadhaar and Graduation marksheets uploaded. Migration certificate pending.'] },
+      { id: 109, name: 'Kartik Iyer', phone: '+91 98200 44556', email: 'kartik.iyer@yahoo.com', course: 'BBA', source: 'Walk-in', stage: 'Application', counsellor: 'Priya Sharma', counsellorId: 'lead', totalFee: 140000, admFee: 35000, paid: 0, city: 'Mumbai', followUp: '23 Nov 2026', isOverdue: false, docs: [true, false, false, false], father: 'Mr. S. Iyer', academics: { t10: '80%', t12: '79%', grad: 'N/A', test: 'CUET 81%' }, notes: ['Visited campus with parents. Filled physical application form.'] },
+      { id: 110, name: 'Pooja Deshmukh', phone: '+91 98222 33445', email: 'pooja.deshmukh@gmail.com', course: 'MCA', source: 'WhatsApp', stage: 'Follow-up', counsellor: 'Amit Kumar', counsellorId: 'amit', totalFee: 160000, admFee: 40000, paid: 0, city: 'Nagpur', followUp: '16 Nov 2026', isOverdue: true, docs: [false, false, false, false], father: 'Mr. Dilip Deshmukh', academics: { t10: '79%', t12: '76%', grad: 'BCA 74%', test: 'MAH-CET' }, notes: ['OVERDUE: Student was travelling. Needed scholarship guidance call.'] },
+      { id: 111, name: 'Sameer Khan', phone: '+91 99350 12389', email: 'sameer.khan@gmail.com', course: 'MBA', source: 'Facebook', stage: 'Enquiry', counsellor: 'Sneha Patel', counsellorId: 'sneha', totalFee: 185000, admFee: 46250, paid: 0, city: 'Lucknow', followUp: 'Today', isOverdue: false, docs: [false, false, false, false], father: 'Mr. Tariq Khan', academics: { t10: '82%', t12: '80%', grad: 'BBA 76%', test: 'CMAT 80 %ile' }, notes: ['Inquired via FB lead form. Sent course brochure PDF.'] },
+      { id: 112, name: 'Ritu Agarwal', phone: '+91 98310 98765', email: 'ritu.agarwal@gmail.com', course: 'B.Des', source: 'Website', stage: 'Fee Payment', counsellor: 'Priya Sharma', counsellorId: 'lead', totalFee: 175000, admFee: 43750, paid: 0, city: 'Kolkata', followUp: 'Today', isOverdue: false, docs: [true, true, true, true], father: 'Mr. Sanjay Agarwal', academics: { t10: '86%', t12: '88%', grad: 'N/A', test: 'Design Portfolio' }, notes: ['Portfolio evaluated and approved with grade A. Fee due today.'] },
+      { id: 113, name: 'Aditya Choudhury', phone: '+91 94370 55667', email: 'aditya.c@gmail.com', course: 'BCA', source: 'Website', stage: 'Counselling', counsellor: 'Amit Kumar', counsellorId: 'amit', totalFee: 130000, admFee: 32500, paid: 0, city: 'Bhubaneswar', followUp: '21 Nov 2026', isOverdue: false, docs: [true, false, false, false], father: 'Mr. B. Choudhury', academics: { t10: '84%', t12: '81%', grad: 'N/A', test: 'N/A' }, notes: ['Enquired about software development syllabus and labs.'] },
+      { id: 114, name: 'Snehal Kulkarni', phone: '+91 98500 12378', email: 'snehal.k@gmail.com', course: 'B.Tech CSE', source: 'CSV Import', stage: 'Doc Verification', counsellor: 'Sneha Patel', counsellorId: 'sneha', totalFee: 220000, admFee: 55000, paid: 0, city: 'Nashik', followUp: '22 Nov 2026', isOverdue: false, docs: [true, true, false, false], father: 'Mr. V. Kulkarni', academics: { t10: '91%', t12: '88%', grad: 'N/A', test: 'MHT-CET 92 %ile' }, notes: ['Imported via bulk CSV. Submitted 10th and 12th marksheet copies.'] },
+      { id: 115, name: 'Manish Tiwari', phone: '+91 94500 88990', email: 'manish.tiwari@gmail.com', course: 'MBA', source: 'WhatsApp', stage: 'Enrollment', counsellor: 'Priya Sharma', counsellorId: 'lead', totalFee: 185000, admFee: 46250, paid: 46250, city: 'Varanasi', followUp: 'Completed', isOverdue: false, docs: [true, true, true, true], father: 'Mr. R.P. Tiwari', academics: { t10: '83%', t12: '81%', grad: 'B.Tech 75%', test: 'CAT 86 %ile' }, notes: ['Token fee paid via UPI ref UPI9283740. ID card issued.'] },
+      { id: 116, name: 'Neha Singhal', phone: '+91 98170 33441', email: 'neha.singhal@gmail.com', course: 'BBA', source: 'Facebook', stage: 'Follow-up', counsellor: 'Amit Kumar', counsellorId: 'amit', totalFee: 140000, admFee: 35000, paid: 0, city: 'Chandigarh', followUp: 'Today', isOverdue: false, docs: [true, false, false, false], father: 'Mr. Vinod Singhal', academics: { t10: '78%', t12: '77%', grad: 'N/A', test: 'CUET 76%' }, notes: ['Scheduled callback for 2:30 PM regarding hostel room allocation.'] },
+      { id: 117, name: 'Pranav Mehta', phone: '+91 98250 66778', email: 'pranav.mehta@gmail.com', course: 'Data Science', source: 'Website', stage: 'Application', counsellor: 'Sneha Patel', counsellorId: 'sneha', totalFee: 190000, admFee: 47500, paid: 0, city: 'Ahmedabad', followUp: '24 Nov 2026', isOverdue: false, docs: [true, true, false, false], father: 'Mr. Hiren Mehta', academics: { t10: '87%', t12: '85%', grad: 'B.E. 81%', test: 'GATE' }, notes: ['Application filled online. Preparing for technical interview round.'] },
+      { id: 118, name: 'Kavita Chauhan', phone: '+91 94120 77889', email: 'kavita.c@gmail.com', course: 'B.Sc Nursing', source: 'Phone Call', stage: 'Enquiry', counsellor: 'Priya Sharma', counsellorId: 'lead', totalFee: 120000, admFee: 30000, paid: 0, city: 'Dehradun', followUp: 'Today', isOverdue: false, docs: [false, false, false, false], father: 'Mr. S.S. Chauhan', academics: { t10: '75%', t12: '73%', grad: 'N/A', test: 'State Entrance' }, notes: ['Called for hostel facilities for female students and hospital tie-ups.'] },
+      { id: 119, name: 'Harish Nambiar', phone: '+91 94470 12890', email: 'harish.nambiar@gmail.com', course: 'B.Tech CSE', source: 'Website', stage: 'Fee Payment', counsellor: 'Amit Kumar', counsellorId: 'amit', totalFee: 220000, admFee: 55000, paid: 0, city: 'Kochi', followUp: '20 Nov 2026', isOverdue: false, docs: [true, true, true, true], father: 'Mr. C. Nambiar', academics: { t10: '95%', t12: '93%', grad: 'N/A', test: 'KEAM Rank 1450' }, notes: ['All documents verified. Ready to pay admission token fee.'] },
+      { id: 120, name: 'Shreya Banerjee', phone: '+91 98300 44321', email: 'shreya.b@gmail.com', course: 'B.Des', source: 'Website', stage: 'Counselling', counsellor: 'Priya Sharma', counsellorId: 'lead', totalFee: 175000, admFee: 43750, paid: 0, city: 'Kolkata', followUp: '21 Nov 2026', isOverdue: false, docs: [true, false, false, false], father: 'Mr. Subhash Banerjee', academics: { t10: '85%', t12: '84%', grad: 'N/A', test: 'NID Prelims' }, notes: ['Interested in UX/UI and Fashion communication tracks.'] },
+      { id: 121, name: 'Kunal Malhotra', phone: '+91 98100 87654', email: 'kunal.m@gmail.com', course: 'MBA', source: 'WhatsApp', stage: 'Fee Payment', counsellor: 'Sneha Patel', counsellorId: 'sneha', totalFee: 185000, admFee: 46250, paid: 0, city: 'Gurgaon', followUp: '20 Nov 2026', isOverdue: false, docs: [true, true, true, true], father: 'Mr. O.P. Malhotra', academics: { t10: '88%', t12: '86%', grad: 'B.Com 80%', test: 'CMAT 92 %ile' }, notes: ['Documents clear. Awaiting net banking payment from father.'] },
+      { id: 122, name: 'Deepali Patil', phone: '+91 98230 45612', email: 'deepali.patil@gmail.com', course: 'MCA', source: 'CSV Import', stage: 'Doc Verification', counsellor: 'Amit Kumar', counsellorId: 'amit', totalFee: 160000, admFee: 40000, paid: 0, city: 'Aurangabad', followUp: '22 Nov 2026', isOverdue: false, docs: [true, true, false, false], father: 'Mr. A. Patil', academics: { t10: '80%', t12: '78%', grad: 'B.Sc CS 76%', test: 'N/A' }, notes: ['Graduation marksheet uploaded. Degree certificate pending university dispatch.'] },
+      { id: 123, name: 'Amanpreet Kaur', phone: '+91 98140 12398', email: 'amanpreet.k@gmail.com', course: 'BBA', source: 'Walk-in', stage: 'Enrollment', counsellor: 'Priya Sharma', counsellorId: 'lead', totalFee: 140000, admFee: 35000, paid: 35000, city: 'Ludhiana', followUp: 'Completed', isOverdue: false, docs: [true, true, true, true], father: 'Sardar Jaswant Singh', academics: { t10: '82%', t12: '80%', grad: 'N/A', test: 'Merit List' }, notes: ['Paid token fee ₹35,000 via NetBanking. Enrolled confirmed!'] },
+      { id: 124, name: 'Abhishek Pandey', phone: '+91 94310 99881', email: 'abhishek.p@gmail.com', course: 'BCA', source: 'Facebook', stage: 'Enquiry', counsellor: 'Amit Kumar', counsellorId: 'amit', totalFee: 130000, admFee: 32500, paid: 0, city: 'Patna', followUp: 'Today', isOverdue: false, docs: [false, false, false, false], father: 'Mr. S.K. Pandey', academics: { t10: '77%', t12: '75%', grad: 'N/A', test: 'N/A' }, notes: ['Enquired about BCA eligibility for students with non-maths background.'] },
+      { id: 125, name: 'Sanya Mirza', phone: '+91 99490 22334', email: 'sanya.mirza@gmail.com', course: 'Data Science', source: 'WhatsApp', stage: 'Counselling', counsellor: 'Sneha Patel', counsellorId: 'sneha', totalFee: 190000, admFee: 47500, paid: 0, city: 'Hyderabad', followUp: '21 Nov 2026', isOverdue: false, docs: [true, false, false, false], father: 'Mr. Asif Mirza', academics: { t10: '90%', t12: '89%', grad: 'B.Tech IT 8.4 CGPA', test: 'N/A' }, notes: ['Discussed AI laboratory resources and industry placement records.'] },
+      { id: 126, name: 'Gaurav Bhatt', phone: '+91 94250 88776', email: 'gaurav.bhatt@gmail.com', course: 'B.Tech CSE', source: 'Phone Call', stage: 'Follow-up', counsellor: 'Sneha Patel', counsellorId: 'sneha', totalFee: 220000, admFee: 55000, paid: 0, city: 'Bhopal', followUp: 'Today', isOverdue: false, docs: [true, false, false, false], father: 'Mr. P.C. Bhatt', academics: { t10: '89%', t12: '87%', grad: 'N/A', test: 'JEE 89 %ile' }, notes: ['Called yesterday. Student wants to clarify cloud computing electives.'] },
+      { id: 127, name: 'Aishwarya Sen', phone: '+91 98640 12345', email: 'aishwarya.sen@gmail.com', course: 'MBA', source: 'Website', stage: 'Application', counsellor: 'Priya Sharma', counsellorId: 'lead', totalFee: 185000, admFee: 46250, paid: 0, city: 'Guwahati', followUp: '23 Nov 2026', isOverdue: false, docs: [true, true, false, false], father: 'Mr. B. Sen', academics: { t10: '84%', t12: '82%', grad: 'B.A. Eco 78%', test: 'MAT 82 %ile' }, notes: ['Submitted application. Waiting for verification of graduation transcript.'] },
+      { id: 128, name: 'Nitin Rawat', phone: '+91 94180 55443', email: 'nitin.rawat@gmail.com', course: 'B.Sc Nursing', source: 'CSV Import', stage: 'Doc Verification', counsellor: 'Amit Kumar', counsellorId: 'amit', totalFee: 120000, admFee: 30000, paid: 0, city: 'Shimla', followUp: '22 Nov 2026', isOverdue: false, docs: [true, true, true, false], father: 'Mr. Mohan Rawat', academics: { t10: '76%', t12: '74%', grad: 'N/A', test: 'State Nursing CET' }, notes: ['Physical documents presented at registrar counter. Migration pending.'] }
+    ];
+
+    // State Variables
+    let currentRole = 'admin';
+    let currentPipeView = 'kanban';
+    let activeStudentId = null;
+    let selectedFlowId = 'flow1';
+    let currentPage = 1;
+    let pageSize = 10;
+    let rosterPage = 1;
+    let filteredLeads = [...leads];
+
+    // Helper functions
+    function inr(num) {
+      if (!num && num !== 0) return '₹0';
+      return '₹' + Number(num).toLocaleString('en-IN');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.textContent = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+
+    function getInitials(name) {
+      if (!name) return 'ST';
+      const parts = name.trim().split(' ');
+      if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+
+    // Tab Navigation
+    function setTab(tabId) {
+      const tabs = ['dash', 'leads', 'pipe', 'team', 'wa'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        const view = document.getElementById(`view-${t}`);
+        if (t === tabId) {
+          btn.className = 'flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition bg-blue-50 text-blue-700 font-bold border border-blue-200/60';
+          view.classList.remove('hidden');
+        } else {
+          btn.className = 'flex items-center gap-1.5 px-3.5 py-2 rounded-lg transition hover:bg-slate-50 text-slate-600 border border-transparent';
+          view.classList.add('hidden');
+        }
+      });
+      lucide.createIcons();
+    }
+
+    function setPipeView(mode) {
+      currentPipeView = mode;
+      const btnK = document.getElementById('btn-view-kanban');
+      const btnT = document.getElementById('btn-view-table');
+      const viewK = document.getElementById('pipeKanbanView');
+      const viewT = document.getElementById('pipeTableView');
+
+      if (mode === 'kanban') {
+        btnK.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white text-slate-800 shadow-xs';
+        btnT.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900';
+        viewK.classList.remove('hidden');
+        viewT.classList.add('hidden');
+      } else {
+        btnT.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white text-slate-800 shadow-xs';
+        btnK.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900';
+        viewT.classList.remove('hidden');
+        viewK.classList.add('hidden');
+      }
+      renderPipeline();
+      lucide.createIcons();
+    }
+
+    // Role Switching
+    function switchRole(roleVal) {
+      currentRole = roleVal;
+      const roleNames = {
+        'admin': 'Administrator (Registrar Office)',
+        'lead': 'Team Lead · Priya Sharma',
+        'sneha': 'Counsellor · Sneha Patel',
+        'amit': 'Counsellor · Amit Kumar'
+      };
+      showToast(`Switched view to: ${roleNames[roleVal]}`);
+      
+      const filterC = document.getElementById('filterCounsellor');
+      if (roleVal === 'sneha') filterC.value = 'Sneha Patel';
+      else if (roleVal === 'amit') filterC.value = 'Amit Kumar';
+      else filterC.value = '';
+
+      applyFilters();
+      renderAll();
+    }
+
+    // Filters & Search
+    function applyFilters() {
+      const q = document.getElementById('leadSearchInput').value.trim().toLowerCase();
+      const src = document.getElementById('filterSource').value;
+      const c = document.getElementById('filterCounsellor').value;
+
+      filteredLeads = leads.filter(l => {
+        if (currentRole === 'sneha' && l.counsellorId !== 'sneha') return false;
+        if (currentRole === 'amit' && l.counsellorId !== 'amit') return false;
+
+        if (q) {
+          const match = l.name.toLowerCase().includes(q) ||
+                        l.phone.replace(/\\D/g, '').includes(q.replace(/\\D/g, '')) ||
+                        l.city.toLowerCase().includes(q) ||
+                        l.course.toLowerCase().includes(q) ||
+                        String(l.id).includes(q);
+          if (!match) return false;
+        }
+
+        if (src && l.source !== src) return false;
+        if (c && l.counsellor !== c) return false;
+
+        return true;
+      });
+
+      currentPage = 1;
+      renderCentralizedLeads();
+      renderPipeline();
+      document.getElementById('leadsBadgeCount').textContent = `${filteredLeads.length} Leads`;
+      lucide.createIcons();
+    }
+
+    function resetFilters() {
+      document.getElementById('leadSearchInput').value = '';
+      document.getElementById('filterSource').value = '';
+      document.getElementById('filterCounsellor').value = (currentRole === 'sneha' ? 'Sneha Patel' : (currentRole === 'amit' ? 'Amit Kumar' : ''));
+      applyFilters();
+    }
+
+    // 1. Centralized Leads Rendering
+    function renderCentralizedLeads() {
+      const tbody = document.getElementById('leadsTableBody');
+      tbody.innerHTML = '';
+
+      let start = 0;
+      let end = filteredLeads.length;
+      if (pageSize !== 'all') {
+        const sz = Number(pageSize);
+        start = (currentPage - 1) * sz;
+        end = Math.min(start + sz, filteredLeads.length);
+      }
+
+      const rows = filteredLeads.slice(start, end);
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-slate-400">No leads found.</td></tr>`;
+      } else {
+        rows.forEach((l, idx) => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-50/80 transition cursor-pointer';
+          tr.onclick = (e) => {
+            if (!e.target.closest('button')) openStudentDrawer(l.id);
+          };
+
+          tr.innerHTML = `
+            <td class="p-3 text-slate-400 font-mono text-[11px]">${start + idx + 1}</td>
+            <td class="py-3 px-2">
+              <div class="flex items-center space-x-2">
+                <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs">
+                  ${getInitials(l.name)}
+                </div>
+                <div>
+                  <b class="text-slate-900 font-semibold block">${l.name}</b>
+                  <span class="text-[10px] text-slate-400">${l.city} • ID #${l.id}</span>
+                </div>
+              </div>
+            </td>
+            <td class="py-3 px-2 font-mono text-[11px] text-slate-600">${l.phone}</td>
+            <td class="py-3 px-2 font-semibold text-slate-800">${l.course}</td>
+            <td class="py-3 px-2"><span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">${l.source}</span></td>
+            <td class="py-3 px-2 text-slate-700 font-medium">${l.counsellor}</td>
+            <td class="py-3 px-2"><span class="px-2 py-0.5 rounded-full border text-[10px] font-semibold ${STAGE_PILLS[l.stage]}">${l.stage}</span></td>
+            <td class="py-3 px-2 font-medium ${l.isOverdue ? 'text-rose-600 font-bold' : (l.followUp === 'Today' ? 'text-amber-600 font-bold' : 'text-slate-600')}">${l.followUp}</td>
+            <td class="py-3 px-3 text-right">
+              <div class="flex items-center justify-end space-x-1">
+                <button onclick="quickWhatsApp(${l.id})" class="p-1 text-emerald-600 hover:bg-emerald-50 rounded" title="Send WhatsApp">
+                  <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+                </button>
+                <button onclick="advanceStage(${l.id})" class="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Advance Stage">
+                  <i data-lucide="arrow-right-circle" class="w-3.5 h-3.5"></i>
+                </button>
+                <button onclick="openStudentDrawer(${l.id})" class="p-1 text-slate-500 hover:bg-slate-100 rounded" title="View Profile">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      // Pagination
+      document.getElementById('paginationInfo').textContent = `Showing ${filteredLeads.length === 0 ? 0 : start + 1} to ${end} of ${filteredLeads.length}`;
+      const totalPages = pageSize === 'all' ? 1 : Math.ceil(filteredLeads.length / Number(pageSize));
+      document.getElementById('btnPrevPage').disabled = currentPage <= 1;
+      document.getElementById('btnNextPage').disabled = currentPage >= totalPages;
+
+      const pBtns = document.getElementById('paginationPageBtns');
+      pBtns.innerHTML = '';
+      for (let p = 1; p <= totalPages; p++) {
+        const b = document.createElement('button');
+        b.textContent = p;
+        b.className = p === currentPage ? 'px-2 py-0.5 rounded bg-blue-600 text-white font-bold' : 'px-2 py-0.5 rounded border border-slate-200 bg-white';
+        b.onclick = () => { currentPage = p; renderCentralizedLeads(); lucide.createIcons(); };
+        pBtns.appendChild(b);
+      }
+    }
+
+    function prevPage() { if (currentPage > 1) { currentPage--; renderCentralizedLeads(); lucide.createIcons(); } }
+    function nextPage() { const tp = pageSize === 'all' ? 1 : Math.ceil(filteredLeads.length / Number(pageSize)); if (currentPage < tp) { currentPage++; renderCentralizedLeads(); lucide.createIcons(); } }
+    function changePageSize(sz) { pageSize = sz; currentPage = 1; renderCentralizedLeads(); lucide.createIcons(); }
+
+    // 2. Complete Admission Pipeline Rendering
+    function renderPipeline() {
+      // Kanban
+      const board = document.getElementById('kanbanBoard');
+      board.innerHTML = '';
+
+      STAGES.forEach((stg, sIdx) => {
+        const colLeads = filteredLeads.filter(l => l.stage === stg);
+        const colVal = colLeads.reduce((a, b) => a + b.admFee, 0);
+
+        const col = document.createElement('div');
+        col.className = 'kanban-col bg-slate-100/80 rounded-xl p-3 border border-slate-200/90 flex flex-col max-h-[700px] shadow-2xs';
+
+        col.innerHTML = `
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full ${stg === 'Enrollment' ? 'bg-emerald-500' : 'bg-blue-600'}"></span>
+              <b class="text-xs font-bold text-slate-800">${stg}</b>
+              <span class="bg-white text-slate-600 text-[10px] font-bold px-1.5 py-0.2 rounded-full border border-slate-200">${colLeads.length}</span>
+            </div>
+            <span class="text-[10px] text-slate-400">${inr(colVal)}</span>
+          </div>
+          <div class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scroll" id="kcol-${sIdx}"></div>
+        `;
+
+        const box = col.querySelector(`#kcol-${sIdx}`);
+        if (colLeads.length === 0) {
+          box.innerHTML = `<div class="p-3 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-lg">No leads in ${stg}</div>`;
+        } else {
+          colLeads.forEach(l => {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-lg p-2.5 border border-slate-200 shadow-2xs hover:border-blue-300 transition cursor-pointer space-y-1.5';
+            card.onclick = (e) => { if (!e.target.closest('button')) openStudentDrawer(l.id); };
+
+            card.innerHTML = `
+              <div class="flex justify-between items-start">
+                <b class="text-xs text-slate-900 block hover:text-blue-600">${l.name}</b>
+                ${l.isOverdue ? '<span class="text-[9px] font-bold bg-rose-50 text-rose-700 px-1 rounded border border-rose-200">Overdue</span>' : ''}
+              </div>
+              <div class="flex justify-between text-[11px] text-slate-500">
+                <span>${l.course} • ${l.city}</span>
+                <span class="font-medium text-slate-700">${inr(l.admFee)}</span>
+              </div>
+              <div class="flex justify-between items-center pt-1 border-t border-slate-50 text-[10px]">
+                <span class="text-slate-400">${l.counsellor}</span>
+                ${sIdx < 6 ? `
+                  <button onclick="advanceStage(${l.id})" class="text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded font-semibold flex items-center">
+                    Advance <i data-lucide="chevron-right" class="w-3 h-3 ml-0.5"></i>
+                  </button>
+                ` : '<span class="text-emerald-600 font-bold">✓ Enrolled</span>'}
+              </div>
+            `;
+            box.appendChild(card);
+          });
+        }
+        board.appendChild(col);
+      });
+
+      // Table View
+      const pTbody = document.getElementById('pipeTableBody');
+      pTbody.innerHTML = '';
+      filteredLeads.forEach(l => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 cursor-pointer';
+        tr.onclick = (e) => { if (!e.target.closest('button')) openStudentDrawer(l.id); };
+        tr.innerHTML = `
+          <td class="p-2.5 font-semibold text-slate-900">${l.name}</td>
+          <td class="p-2.5 text-slate-700">${l.course}</td>
+          <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${STAGE_PILLS[l.stage]}">${l.stage}</span></td>
+          <td class="p-2.5">${l.docs.filter(Boolean).length}/4 Docs Verified</td>
+          <td class="p-2.5 font-medium ${l.paid > 0 ? 'text-emerald-600' : 'text-slate-600'}">${l.paid > 0 ? inr(l.paid) + ' Paid' : 'Pending'}</td>
+          <td class="p-2.5 text-slate-600">${l.counsellor}</td>
+          <td class="p-2.5 text-right">
+            <button onclick="openStudentDrawer(${l.id})" class="text-blue-600 hover:underline font-semibold">View Drawer →</button>
+          </td>
+        `;
+        pTbody.appendChild(tr);
+      });
+    }
+
+    // 3. Counsellor Management (30 Members Roster & Daily Tasks)
+    function renderCounsellorManagement() {
+      // Daily Tasks Table
+      const tasksTbody = document.getElementById('dailyTasksTbody');
+      tasksTbody.innerHTML = '';
+      const priorityLeads = leads.filter(l => l.isOverdue || l.followUp === 'Today');
+
+      priorityLeads.forEach(l => {
+        const tr = document.createElement('tr');
+        tr.className = l.isOverdue ? 'bg-rose-50/40 hover:bg-rose-50/70' : 'hover:bg-slate-50';
+        tr.innerHTML = `
+          <td class="p-2.5">
+            <span class="px-2 py-0.5 rounded font-bold text-[10px] ${l.isOverdue ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}">
+              ${l.isOverdue ? '🚨 OVERDUE' : '📅 TODAY'}
+            </span>
+          </td>
+          <td class="p-2.5 font-semibold text-slate-900 cursor-pointer hover:text-blue-600" onclick="openStudentDrawer(${l.id})">${l.name}</td>
+          <td class="p-2.5 font-mono text-[11px]">${l.phone}</td>
+          <td class="p-2.5 text-slate-700">${l.course}</td>
+          <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${STAGE_PILLS[l.stage]}">${l.stage}</span></td>
+          <td class="p-2.5 font-medium text-slate-700">${l.counsellor}</td>
+          <td class="p-2.5 font-bold ${l.isOverdue ? 'text-rose-700' : 'text-amber-700'}">${l.followUp}</td>
+          <td class="p-2.5 text-right space-x-1">
+            <button onclick="quickWhatsApp(${l.id})" class="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded font-semibold">WhatsApp</button>
+            <button onclick="markTaskDone(${l.id})" class="px-2 py-1 bg-blue-600 text-white hover:bg-blue-700 rounded font-semibold">Done</button>
+          </td>
+        `;
+        tasksTbody.appendChild(tr);
+      });
+
+      // 30 Counsellors Roster (Paginated 10 per page)
+      const rosterTbody = document.getElementById('counsellorRosterTbody');
+      rosterTbody.innerHTML = '';
+
+      const start = (rosterPage - 1) * 10;
+      const end = Math.min(start + 10, TEAM_MEMBERS.length);
+      const pageMembers = TEAM_MEMBERS.slice(start, end);
+
+      pageMembers.forEach(m => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition';
+        tr.innerHTML = `
+          <td class="p-2.5">
+            <div class="flex items-center space-x-2">
+              <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-[10px]">
+                ${getInitials(m.name)}
+              </div>
+              <b class="text-slate-900">${m.name}</b>
+            </div>
+          </td>
+          <td class="p-2.5 text-slate-600">${m.pod}</td>
+          <td class="p-2.5"><span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-semibold">${m.role}</span></td>
+          <td class="p-2.5 font-bold text-slate-800">${m.active} Leads</td>
+          <td class="p-2.5 text-slate-700">${m.today} Tasks</td>
+          <td class="p-2.5 font-bold text-emerald-700">${m.enrolled} Enrolled</td>
+          <td class="p-2.5 font-semibold text-slate-700">${m.conv}</td>
+          <td class="p-2.5 font-bold text-slate-900">${inr(m.fee)}</td>
+          <td class="p-2.5 text-right">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${m.status === 'Optimal' ? 'bg-emerald-50 text-emerald-700' : (m.status === 'Heavy' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700')}">
+              ${m.status}
+            </span>
+          </td>
+        `;
+        rosterTbody.appendChild(tr);
+      });
+
+      document.getElementById('rosterPaginationInfo').textContent = `Showing ${start + 1} to ${end} of ${TEAM_MEMBERS.length} Counsellors`;
+      const rBtns = document.getElementById('rosterPageBtns');
+      rBtns.innerHTML = '';
+      for (let p = 1; p <= 3; p++) {
+        const b = document.createElement('button');
+        b.textContent = p;
+        b.className = p === rosterPage ? 'px-2 py-0.5 rounded bg-blue-600 text-white font-bold' : 'px-2 py-0.5 rounded border border-slate-200 bg-white';
+        b.onclick = () => { rosterPage = p; renderCounsellorManagement(); lucide.createIcons(); };
+        rBtns.appendChild(b);
+      }
+    }
+
+    // 4. WhatsApp Automation Rendering
+    function renderWhatsAppAutomation() {
+      const list = document.getElementById('waFlowsList');
+      list.innerHTML = '';
+
+      WA_FLOWS.forEach(flow => {
+        const isSel = (flow.id === selectedFlowId);
+        const card = document.createElement('div');
+        card.className = `p-4 rounded-xl border transition cursor-pointer ${isSel ? 'bg-blue-50/50 border-blue-400 shadow-xs' : 'bg-white border-slate-200 hover:border-slate-300'}`;
+        card.onclick = () => selectFlow(flow.id);
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-1.5">
+            <div class="flex items-center space-x-2">
+              <span class="w-6 h-6 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">WA</span>
+              <b class="text-xs font-bold text-slate-900">${flow.title}</b>
+            </div>
+            
+            <label class="relative inline-flex items-center cursor-pointer" onclick="event.stopPropagation()">
+              <input type="checkbox" ${flow.active ? 'checked' : ''} onchange="toggleFlow('${flow.id}', this.checked)" class="sr-only peer">
+              <div class="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-600"></div>
+            </label>
+          </div>
+
+          <p class="text-[11px] text-slate-500 mb-2"><b>Trigger:</b> ${flow.trigger}</p>
+          <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-[11px] text-slate-700 font-mono leading-relaxed">
+            ${flow.template}
+          </div>
+        `;
+        list.appendChild(card);
+      });
+
+      updatePhoneMockup();
+    }
+
+    function selectFlow(flowId) {
+      selectedFlowId = flowId;
+      renderWhatsAppAutomation();
+    }
+
+    function toggleFlow(flowId, val) {
+      const f = WA_FLOWS.find(x => x.id === flowId);
+      if (f) {
+        f.active = val;
+        showToast(`${f.title} is now ${val ? 'Active' : 'Paused'}`);
+      }
+    }
+
+    function updatePhoneMockup() {
+      const flow = WA_FLOWS.find(x => x.id === selectedFlowId) || WA_FLOWS[0];
+      const sample = leads[0];
+      const rendered = flow.template
+        .replace('{name}', sample.name)
+        .replace('{course}', sample.course)
+        .replace('{counsellor}', sample.counsellor)
+        .replace('{id}', sample.id);
+
+      document.getElementById('mockFlowTitle').textContent = flow.title;
+      document.getElementById('mockFlowText').textContent = rendered;
+      lucide.createIcons();
+    }
+
+    function testTriggerActiveFlow() {
+      const flow = WA_FLOWS.find(x => x.id === selectedFlowId) || WA_FLOWS[0];
+      showToast(`Test WhatsApp message sent for ${flow.title}!`);
+    }
+
+    // 5. Management Dashboard Reports
+    function updateDashboardReports() {
+      // Funnel
+      const funnel = document.getElementById('funnelBars');
+      funnel.innerHTML = '';
+      STAGES.forEach(stg => {
+        const count = leads.filter(l => l.stage === stg).length;
+        const pct = Math.round((count / leads.length) * 100);
+        const div = document.createElement('div');
+        div.className = 'space-y-1';
+        div.innerHTML = `
+          <div class="flex justify-between text-xs font-semibold text-slate-700">
+            <span>${stg}</span>
+            <span class="text-slate-500">${count} students (${pct}%)</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+            <div class="h-2 rounded-full ${stg === 'Enrollment' ? 'bg-emerald-500' : 'bg-blue-600'}" style="width: ${Math.max(pct, 6)}%"></div>
+          </div>
+        `;
+        funnel.appendChild(div);
+      });
+
+      // Top Counsellors Table
+      const topTbody = document.getElementById('topCounsellorsTbody');
+      topTbody.innerHTML = '';
+      TEAM_MEMBERS.slice(0, 5).forEach(m => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50';
+        tr.innerHTML = `
+          <td class="p-2 font-semibold text-slate-900">${m.name}</td>
+          <td class="p-2 text-slate-500 text-[11px]">${m.role}</td>
+          <td class="p-2 font-bold text-slate-800">${m.active}</td>
+          <td class="p-2 font-bold text-emerald-700">${m.enrolled}</td>
+          <td class="p-2 text-slate-700">${m.conv}</td>
+          <td class="p-2 font-semibold text-slate-900">${inr(m.fee)}</td>
+          <td class="p-2 text-right"><span class="px-2 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-700 font-semibold">${m.status}</span></td>
+        `;
+        topTbody.appendChild(tr);
+      });
+
+      // Badges
+      const overdueCount = leads.filter(l => l.isOverdue).length;
+      document.getElementById('teamTaskCountPill').textContent = `${overdueCount} Overdue`;
+      document.getElementById('teamOverdueLabel').textContent = `${overdueCount} Overdue`;
+      document.getElementById('totalLeadsCountPill').textContent = leads.length;
+    }
+
+    // Student Drawer
+    function openStudentDrawer(id) {
+      activeStudentId = id;
+      const l = leads.find(x => x.id === id);
+      if (!l) return;
+
+      document.getElementById('drawerAvatar').textContent = getInitials(l.name);
+      document.getElementById('drawerName').textContent = l.name;
+      document.getElementById('drawerSubline').textContent = `${l.course} • ${l.city} • Application #${l.id}`;
+      
+      const pill = document.getElementById('drawerStagePill');
+      pill.textContent = l.stage;
+      pill.className = `text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STAGE_PILLS[l.stage]}`;
+
+      // Stepper
+      const curIdx = STAGES.indexOf(l.stage);
+      const stepper = document.getElementById('drawerStepperBars');
+      stepper.innerHTML = '';
+      STAGES.forEach((stg, sIdx) => {
+        const b = document.createElement('div');
+        b.className = sIdx <= curIdx ? 'h-2 rounded-sm bg-blue-600' : 'h-2 rounded-sm bg-slate-200';
+        stepper.appendChild(b);
+      });
+
+      const nextBtn = document.getElementById('drawerNextStageBtn');
+      if (curIdx < 6) {
+        nextBtn.innerHTML = `Advance to ${STAGES[curIdx + 1]} <i data-lucide="arrow-right" class="w-3 h-3 ml-1"></i>`;
+        nextBtn.classList.remove('hidden');
+      } else {
+        nextBtn.classList.add('hidden');
+      }
+
+      // Profile tab
+      document.getElementById('infoPhone').textContent = l.phone;
+      document.getElementById('infoEmail').textContent = l.email;
+      document.getElementById('infoCity').textContent = l.city;
+      document.getElementById('infoSource').textContent = l.source;
+      document.getElementById('infoCounsellor').textContent = l.counsellor;
+      document.getElementById('infoFollowUp').textContent = l.followUp;
+      document.getElementById('infoFather').textContent = l.father || 'Pending';
+
+      const acad = document.getElementById('infoAcademicsGrid');
+      acad.innerHTML = '';
+      if (l.academics) {
+        acad.innerHTML = `
+          <div><span class="text-slate-400 block">Class 10th</span><b class="text-slate-800">${l.academics.t10}</b></div>
+          <div><span class="text-slate-400 block">Class 12th</span><b class="text-slate-800">${l.academics.t12}</b></div>
+          <div><span class="text-slate-400 block">Graduation</span><b class="text-slate-800">${l.academics.grad}</b></div>
+          <div><span class="text-slate-400 block">Entrance Exam</span><b class="text-slate-800">${l.academics.test}</b></div>
+        `;
+      }
+
+      // Docs tab
+      const dlist = document.getElementById('drawerDocsList');
+      dlist.innerHTML = '';
+      let verCount = 0;
+      DOC_NAMES.forEach((name, dIdx) => {
+        const isV = l.docs[dIdx];
+        if (isV) verCount++;
+        const div = document.createElement('div');
+        div.className = `p-2.5 rounded-lg border flex justify-between items-center ${isV ? 'bg-emerald-50/60 border-emerald-200' : 'bg-slate-50 border-slate-200'}`;
+        div.innerHTML = `
+          <div>
+            <b class="text-xs font-semibold ${isV ? 'text-emerald-900' : 'text-slate-700'}">${name}</b>
+            <span class="text-[10px] text-slate-400 block">${isV ? '✓ Verified by Registrar' : 'Pending verification'}</span>
+          </div>
+          <button onclick="toggleDoc(${l.id}, ${dIdx})" class="px-2 py-1 text-xs font-semibold rounded ${isV ? 'bg-white text-rose-600 border border-rose-200' : 'bg-blue-600 text-white'}">
+            ${isV ? 'Unverify' : 'Verify'}
+          </button>
+        `;
+        dlist.appendChild(div);
+      });
+      document.getElementById('drawerDocsBadge').textContent = `${verCount}/4`;
+
+      // Fees tab
+      document.getElementById('drawerTotalFee').textContent = inr(l.totalFee);
+      document.getElementById('drawerAdmFee').textContent = inr(l.admFee);
+      document.getElementById('drawerAmountPaid').textContent = inr(l.paid || 0);
+      document.getElementById('drawerBalance').textContent = inr(l.admFee - (l.paid || 0));
+
+      const fb = document.getElementById('drawerFeeBadge');
+      if (l.paid >= l.admFee) {
+        fb.textContent = 'Token Paid · Confirmed';
+        fb.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
+      } else {
+        fb.textContent = 'Token Due';
+        fb.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
+      }
+
+      // Notes tab
+      const nlist = document.getElementById('drawerNotesList');
+      nlist.innerHTML = '';
+      (l.notes || []).forEach(n => {
+        const item = document.createElement('div');
+        item.className = 'p-2.5 bg-slate-50 rounded border border-slate-200 text-slate-700 text-xs';
+        item.textContent = n;
+        nlist.appendChild(item);
+      });
+
+      setDrawerTab('info');
+      document.getElementById('studentDrawerBackdrop').classList.remove('hidden');
+      document.getElementById('studentDrawer').classList.remove('translate-x-full');
+      lucide.createIcons();
+    }
+
+    function closeDrawer() {
+      document.getElementById('studentDrawerBackdrop').classList.add('hidden');
+      document.getElementById('studentDrawer').classList.add('translate-x-full');
+      activeStudentId = null;
+    }
+
+    function setDrawerTab(tabName) {
+      ['info', 'docs', 'fees', 'notes'].forEach(t => {
+        const btn = document.getElementById(`dtab-${t}`);
+        const view = document.getElementById(`dview-${t}`);
+        if (t === tabName) {
+          btn.className = 'py-2.5 px-3 text-blue-600 border-b-2 border-blue-600 font-bold';
+          view.classList.remove('hidden');
+        } else {
+          btn.className = 'py-2.5 px-3 text-slate-500 hover:text-slate-800 border-b-2 border-transparent';
+          view.classList.add('hidden');
+        }
+      });
+      lucide.createIcons();
+    }
+
+    function advanceStage(leadId) {
+      const l = leads.find(x => x.id === leadId);
+      if (!l) return;
+      const idx = STAGES.indexOf(l.stage);
+      if (idx < STAGES.length - 1) {
+        l.stage = STAGES[idx + 1];
+        l.notes.unshift(`Stage advanced to ${l.stage} on 19 Nov 2026.`);
+        showToast(`Advanced ${l.name} to ${l.stage}`);
+        renderAll();
+        if (activeStudentId === leadId) openStudentDrawer(leadId);
+      }
+    }
+
+    function advanceCurrentStudentStage() { if (activeStudentId) advanceStage(activeStudentId); }
+
+    function toggleDoc(leadId, docIdx) {
+      const l = leads.find(x => x.id === leadId);
+      if (!l) return;
+      l.docs[docIdx] = !l.docs[docIdx];
+      const status = l.docs[docIdx] ? 'verified' : 'marked unverified';
+      l.notes.unshift(`Document '${DOC_NAMES[docIdx]}' ${status}.`);
+      showToast(`Document ${status}`);
+      openStudentDrawer(leadId);
+      renderAll();
+    }
+
+    function addCurrentStudentNote() {
+      if (!activeStudentId) return;
+      const inp = document.getElementById('drawerNoteInput');
+      const val = inp.value.trim();
+      if (!val) return;
+      const l = leads.find(x => x.id === activeStudentId);
+      l.notes.unshift(`Call Note: ${val}`);
+      inp.value = '';
+      showToast('Note saved');
+      openStudentDrawer(activeStudentId);
+      renderAll();
+    }
+
+    function markTaskDone(leadId) {
+      const l = leads.find(x => x.id === leadId);
+      if (l) {
+        l.isOverdue = false;
+        l.followUp = '25 Nov 2026';
+        l.notes.unshift('Follow-up task completed.');
+        showToast(`Task completed for ${l.name}`);
+        renderAll();
+      }
+    }
+
+    function quickWhatsApp(id) {
+      const l = leads.find(x => x.id === id);
+      if (!l) return;
+      window.open(`https://wa.me/${l.phone.replace(/\\D/g, '')}`, '_blank');
+      showToast(`Opening WhatsApp for ${l.name}`);
+    }
+
+    function drawerWhatsApp() { if (activeStudentId) quickWhatsApp(activeStudentId); }
+    function drawerCall() {
+      const l = leads.find(x => x.id === activeStudentId);
+      if (l) window.open(`tel:${l.phone.replace(/\\D/g, '')}`, '_self');
+    }
+
+    // Payment Modal
+    function openRecordPaymentModal() {
+      if (!activeStudentId) return;
+      const l = leads.find(x => x.id === activeStudentId);
+      document.getElementById('paymentModalStudentName').textContent = `${l.name} (${l.course})`;
+      document.getElementById('payAmount').value = l.admFee - (l.paid || 0);
+      document.getElementById('payRef').value = 'UTR' + Math.floor(1000000 + Math.random() * 9000000);
+      document.getElementById('modalPayment').classList.remove('hidden');
+    }
+
+    function closePaymentModal() { document.getElementById('modalPayment').classList.add('hidden'); }
+
+    function submitPayment(e) {
+      e.preventDefault();
+      if (!activeStudentId) return;
+      const l = leads.find(x => x.id === activeStudentId);
+      const amt = Number(document.getElementById('payAmount').value);
+      const mode = document.getElementById('payMode').value;
+      const ref = document.getElementById('payRef').value;
+      l.paid = (l.paid || 0) + amt;
+      if (l.paid >= l.admFee && l.stage === 'Fee Payment') l.stage = 'Enrollment';
+      l.notes.unshift(`Payment of ${inr(amt)} received via ${mode} (Ref: ${ref}).`);
+      closePaymentModal();
+      showToast(`Payment of ${inr(amt)} recorded!`);
+      openStudentDrawer(activeStudentId);
+      renderAll();
+    }
+
+    // Add Lead Modal & Duplicate Check
+    function openAddModal() {
+      document.getElementById('addLeadDupeAlert').classList.add('hidden');
+      document.getElementById('newLeadName').value = '';
+      document.getElementById('newLeadPhone').value = '';
+      document.getElementById('newLeadEmail').value = '';
+      document.getElementById('modalAddLead').classList.remove('hidden');
+    }
+
+    function closeAddModal() { document.getElementById('modalAddLead').classList.add('hidden'); }
+
+    function checkDuplicatePhone(val) {
+      const clean = val.replace(/\\D/g, '');
+      const banner = document.getElementById('addLeadDupeAlert');
+      const text = document.getElementById('addLeadDupeText');
+      if (clean.length >= 8) {
+        const exist = leads.find(l => l.phone.replace(/\\D/g, '').includes(clean));
+        if (exist) {
+          text.textContent = `Duplicate: ${exist.name} (${exist.phone}) is already assigned to ${exist.counsellor} in stage '${exist.stage}'.`;
+          banner.classList.remove('hidden');
+          return;
+        }
+      }
+      banner.classList.add('hidden');
+    }
+
+    function submitNewLead(e) {
+      e.preventDefault();
+      const name = document.getElementById('newLeadName').value.trim();
+      const phone = document.getElementById('newLeadPhone').value.trim();
+      const email = document.getElementById('newLeadEmail').value.trim();
+      const course = document.getElementById('newLeadCourse').value;
+      const source = document.getElementById('newLeadSource').value;
+      const city = document.getElementById('newLeadCity').value.trim() || 'New Delhi';
+
+      const pool = ['Sneha Patel', 'Amit Kumar', 'Priya Sharma'];
+      const coun = pool[leads.length % pool.length];
+      const cid = coun === 'Amit Kumar' ? 'amit' : (coun === 'Priya Sharma' ? 'lead' : 'sneha');
+
+      leads.unshift({
+        id: 100 + leads.length + 1,
+        name: name,
+        phone: phone.startsWith('+91') ? phone : '+91 ' + phone,
+        email: email || `${name.toLowerCase().replace(/\\s+/g, '.')}@gmail.com`,
+        course: course,
+        source: source,
+        stage: 'Enquiry',
+        counsellor: coun,
+        counsellorId: cid,
+        totalFee: 180000,
+        admFee: 45000,
+        paid: 0,
+        city: city,
+        followUp: 'Today',
+        isOverdue: false,
+        docs: [false, false, false, false],
+        father: 'Pending',
+        academics: { t10: 'N/A', t12: 'N/A', grad: 'N/A', test: 'N/A' },
+        notes: [`Enquiry captured from ${source}. Auto-assigned to ${coun}.`]
+      });
+
+      closeAddModal();
+      showToast(`Lead for ${name} added & auto-assigned to ${coun}!`);
+      applyFilters();
+      renderAll();
+    }
+
+    // Bulk Import Modal
+    function openImportModal() { document.getElementById('modalImport').classList.remove('hidden'); }
+    function closeImportModal() { document.getElementById('modalImport').classList.add('hidden'); }
+
+    function loadSampleCSV() {
+      document.getElementById('importCSVText').value = `Name, Phone, Course, City
+Aditi Sen, 9823411122, MBA, Kolkata
+Rajeev Menon, 9845022233, B.Tech CSE, Kochi
+Karan Joshi, 9811233344, BBA, Delhi
+Fatima Sheikh, 9876544455, MCA, Lucknow
+Naveen Reddy, 9988755566, Data Science, Bangalore`;
+    }
+
+    function executeCSVImport() {
+      const raw = document.getElementById('importCSVText').value.trim();
+      if (!raw) return;
+      const lines = raw.split('\\n').map(l => l.trim()).filter(Boolean);
+      let ok = 0, dups = 0;
+      const pool = ['Sneha Patel', 'Amit Kumar', 'Priya Sharma'];
+
+      lines.forEach((l, idx) => {
+        if (idx === 0 && l.toLowerCase().includes('name')) return;
+        const c = l.split(',').map(x => x.trim());
+        if (c.length < 2) return;
+        const clean = c[1].replace(/\\D/g, '');
+        if (leads.some(x => x.phone.replace(/\\D/g, '').includes(clean))) { dups++; return; }
+
+        const coun = pool[leads.length % pool.length];
+        const cid = coun === 'Amit Kumar' ? 'amit' : (coun === 'Priya Sharma' ? 'lead' : 'sneha');
+
+        leads.unshift({
+          id: 200 + leads.length + 1,
+          name: c[0],
+          phone: c[1].startsWith('+91') ? c[1] : '+91 ' + c[1],
+          email: `${c[0].toLowerCase().replace(/\\s+/g, '.')}@admitdesk.edu`,
+          course: c[2] || 'MBA',
+          source: 'CSV Import',
+          stage: 'Enquiry',
+          counsellor: coun,
+          counsellorId: cid,
+          totalFee: 180000,
+          admFee: 45000,
+          paid: 0,
+          city: c[3] || 'Pune',
+          followUp: 'Today',
+          isOverdue: false,
+          docs: [false, false, false, false],
+          father: 'Pending',
+          academics: { t10: 'N/A', t12: 'N/A', grad: 'N/A', test: 'N/A' },
+          notes: ['Imported via bulk CSV. Auto-assigned.']
+        });
+        ok++;
+      });
+
+      closeImportModal();
+      showToast(`Imported ${ok} leads (${dups} duplicates skipped).`);
+      applyFilters();
+      renderAll();
+    }
+
+    // CSV Export
+    function exportCurrentLeadsCSV() {
+      const headers = ['ID', 'Name', 'Phone', 'Email', 'Course', 'City', 'Source', 'Stage', 'Counsellor', 'Token Fee'];
+      const rows = filteredLeads.map(l => [l.id, `"${l.name}"`, `"${l.phone}"`, `"${l.email}"`, `"${l.course}"`, `"${l.city}"`, `"${l.source}"`, `"${l.stage}"`, `"${l.counsellor}"`, l.admFee]);
+      const csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\\n');
+      const link = document.createElement('a');
+      link.setAttribute('href', encodeURI(csv));
+      link.setAttribute('download', `AdmitDesk_Leads_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast(`Exported ${filteredLeads.length} leads.`);
+    }
+
+    // Master Render
+    function renderAll() {
+      updateDashboardReports();
+      renderCentralizedLeads();
+      renderPipeline();
+      renderCounsellorManagement();
+      renderWhatsAppAutomation();
+      lucide.createIcons();
+    }
+
+    window.onload = function() {
+      applyFilters();
+      renderAll();
+
+      // Donut Chart for Lead Source Analysis
+      const ctx = document.getElementById('sourceDonut').getContext('2d');
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['WhatsApp', 'Website Form', 'Facebook Ads', 'Phone / Walk-in'],
+          datasets: [{
+            data: [36, 28, 22, 14],
+            backgroundColor: ['#10b981', '#2563eb', '#6366f1', '#f59e0b'],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          cutout: '72%'
+        }
+      });
+
+      lucide.createIcons();
+    };
+  </script>
+</body>
+</html>
+"""
+
+with open('/home/ubuntu/chatwoot/dashboard-app/public/index.html', 'w', encoding='utf-8') as f:
+    f.write(FOCUSED_HTML)
+
+print("Generated focused index.html successfully with length:", len(FOCUSED_HTML))
